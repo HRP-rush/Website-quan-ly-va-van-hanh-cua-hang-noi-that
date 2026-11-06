@@ -78,6 +78,25 @@ app.use(
   loginLimiter
 );
 
+
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message:
+      "Bạn đã gửi quá nhiều yêu cầu đăng ký. Vui lòng thử lại sau."
+  }
+});
+
+app.use(
+  "/api/v1/tai-khoan/dang-ky",
+  registerLimiter
+);
+
+
 app.use(
   "/api/v1/tai-khoan",
   taiKhoanRoutes
