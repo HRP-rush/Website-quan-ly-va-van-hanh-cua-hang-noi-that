@@ -146,8 +146,179 @@ function dangXuat(req, res) {
   });
 }
 
+
+async function dangKy(req, res) {
+  try {
+    const {
+      hoTen,
+      email,
+      soDienThoai,
+      matKhau
+    } = req.body || {};
+
+    // 1. Kiểm tra kiểu dữ liệu
+    if (
+      typeof hoTen !== "string" ||
+      typeof email !== "string" ||
+      typeof soDienThoai !== "string" ||
+      typeof matKhau !== "string"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Thông tin đăng ký không hợp lệ."
+      });
+    }
+
+    const ten = hoTen.trim();
+    const mail = email.trim().toLowerCase();
+    const phone = soDienThoai.trim();
+
+    // 2. Kiểm tra dữ liệu bắt buộc
+    if (!ten || !mail || !phone || !matKhau) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng nhập đầy đủ thông tin."
+      });
+    }
+
+    // 3. Kiểm tra họ tên
+    if (ten.length < 2 || ten.length > 150) {
+      return res.status(400).json({
+        success: false,
+        message: "Họ tên phải có từ 2 đến 150 ký tự."
+      });
+    }
+
+    // 4. Kiểm tra email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (
+      mail.length > 254 ||
+      !emailRegex.test(mail) ||
+      !/^[\x00-\x7F]+$/.test(mail)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Email không đúng định dạng."
+      });
+    }
+
+    // 5. Kiểm tra số điện thoại
+    const phoneRegex = /^0[0-9]{9,10}$/;
+
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Số điện thoại không hợp lệ."
+      });
+    }
+
+    // 6. Kiểm tra mật khẩu
+    const passwordBytes = Buffer.byteLength(matKhau, "utf8");
+
+    if (
+      matKhau.length < 8 ||
+      passwordBytes > 72 ||
+      !/[a-z]/.test(matKhau) ||
+      !/[A-Z]/.test(matKhau) ||
+      !/[0-9]/.test(matKhau)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường và số; tối đa 72 byte."
+      });
+    }
+
+    const pool = await getPool();
+
+    // 7. Xác định mã vai trò khách hàng từ database
+    // KHÔNG nhận vai trò do frontend truyền lên.
+    const roleResult = await pool.request()
+      .query(`
+        SELECT MaVaiTro
+        FROM dbo.VaiTro
+        WHERE TenVaiTro = N'Khách hàng'
+      `);
+
+    if (roleResult.recordset.length === 0) {
+      return res.status(500).json({
+        success: false,
+        message: "Hệ thống chưa cấu hình vai trò khách hàng."
+      });
+    }
+
+    const maVaiTro = roleResult.recordset[0].MaVaiTro;
+
+    // 8. Băm mật khẩu bằng bcrypt
+    const passwordHash = await bcrypt.hash(matKhau, 12);
+
+    // 9. Thêm tài khoản vào database
+    const result = await pool.request()
+      .input("maVaiTro", sql.Int, maVaiTro)
+      .input("hoTen", sql.NVarChar(150), ten)
+      .input("email", sql.VarChar(254), mail)
+      .input("matKhauHash", sql.VarChar(255), passwordHash)
+      .input("soDienThoai", sql.VarChar(20), phone)
+      .query(`
+        INSERT INTO dbo.NguoiDung (
+          MaVaiTro,
+          HoTen,
+          Email,
+          MatKhauHash,
+          SoDienThoai,
+          TrangThai
+        )
+        OUTPUT
+          INSERTED.MaNguoiDung,
+          INSERTED.HoTen,
+          INSERTED.Email
+        VALUES (
+          @maVaiTro,
+          @hoTen,
+          @email,
+          @matKhauHash,
+          @soDienThoai,
+          N'Hoạt động'
+        )
+      `);
+
+    return res.status(201).json({
+      success: true,
+      message: "Đăng ký tài khoản thành công.",
+      data: {
+        ...result.recordset[0],
+        TenVaiTro: "Khách hàng"
+      }
+    });
+
+  } catch (error) {
+    // SQL Server: trùng giá trị UNIQUE
+    if (
+      error.number === 2601 ||
+      error.number === 2627 ||
+      error.originalError?.info?.number === 2601 ||
+      error.originalError?.info?.number === 2627
+    ) {
+      return res.status(409).json({
+        success: false,
+        message: "Email này đã được sử dụng."
+      });
+    }
+
+    console.error("Lỗi đăng ký:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Không thể tạo tài khoản. Vui lòng thử lại."
+    });
+  }
+}
+
+
 module.exports = {
   dangNhap,
+  dangKy,
   cuaToi,
   dangXuat
 };
