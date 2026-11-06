@@ -1,7 +1,8 @@
 
 import { useState } from "react";
-import { Search, UserRound, ShoppingBag, Menu, X } from "lucide-react";
+import { Search, ShoppingBag, Menu, X } from "lucide-react";
 import Navbar from "./Navbar";
+import AccountMenu from "./AccountMenu";
 
 export default function Header({ onSearch, onCategoryChange }) {
   const [keyword, setKeyword] = useState("");
@@ -43,16 +44,14 @@ export default function Header({ onSearch, onCategoryChange }) {
         </form>
 
         <div className="header-actions">
-          <a href="/dang-nhap" className="header-action">
-            <UserRound size={19} strokeWidth={1.5} />
-            <span>Tài khoản</span>
-          </a>
-
+          <AccountMenu />
+          
           <a href="/gio-hang" className="header-action">
             <ShoppingBag size={19} strokeWidth={1.5} />
             <span>Giỏ hàng</span>
           </a>
         </div>
+
 
         <button
           className="mobile-menu-toggle"

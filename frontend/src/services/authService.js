@@ -67,3 +67,40 @@ export function getRolePath(role) {
 
   return paths[role] || "/";
 }
+
+
+export async function registerCustomer({
+  hoTen,
+  email,
+  soDienThoai,
+  matKhau
+}) {
+  const API_URL = import.meta.env.VITE_API_URL;
+
+  const response = await fetch(
+    `${API_URL}/api/v1/tai-khoan/dang-ky`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        hoTen,
+        email,
+        soDienThoai,
+        matKhau
+      })
+    }
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message || "Đăng ký tài khoản thất bại."
+    );
+  }
+
+  return result;
+}

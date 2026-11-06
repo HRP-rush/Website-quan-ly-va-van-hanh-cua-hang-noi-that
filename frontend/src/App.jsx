@@ -10,6 +10,8 @@ import {
 
 import Home from "./pages/customer/Home";
 import Login from "./pages/customer/Login";
+import Register from "./pages/customer/Register";
+
 
 import {
   getCurrentUser,
@@ -114,6 +116,12 @@ function App() {
         <Route
           path="/dang-nhap"
           element={<Login />}
+        />
+
+        {/* Đăng ký chung */} 
+        <Route
+          path="/dang-ky"
+          element={<Register />}
         />
 
         {/* Trang Admin */}

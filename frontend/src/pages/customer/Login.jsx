@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 
 import Header from "../../components/Header";
@@ -10,6 +10,8 @@ import "../../styles/login.css";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const successMessage = location.state?.message;
 
   const [email, setEmail] = useState("");
   const [matKhau, setMatKhau] = useState("");
@@ -63,6 +65,12 @@ export default function Login() {
             <p className="login-description">
               Đăng nhập để theo dõi đơn hàng và chăm chút tổ ấm.
             </p>
+            
+            {successMessage && (
+            <div className="login-success" role="status">
+                ✓ {successMessage}
+            </div>
+            )}
 
             <form onSubmit={handleSubmit} className="login-form">
               <div className="login-field">
@@ -142,7 +150,7 @@ export default function Login() {
 
               <p className="login-register">
                 Chưa có tài khoản?{" "}
-                <a href="/dang-ky">Đăng ký ngay</a>
+                <Link to="/dang-ky">Đăng ký ngay</Link>
               </p>
             </form>
           </div>
