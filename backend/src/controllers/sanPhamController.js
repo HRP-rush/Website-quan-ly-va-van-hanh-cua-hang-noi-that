@@ -96,6 +96,111 @@ async function layGioHang(req, res) {
   }
 }
 
+async function kiemTraTonKho(req, res) {
+  const items = req.body?.items;
+  if (
+    !Array.isArray(items) ||
+    items.length === 0 ||
+    items.length > 100 ||
+    items.some((item) =>
+      !item ||
+      typeof item.sku !== "string" ||
+      !item.sku.trim() ||
+      item.sku.trim().length > 80 ||
+      (item.name !== undefined &&
+        (typeof item.name !== "string" || item.name.length > 250)) ||
+      !Number.isSafeInteger(item.quantity) ||
+      item.quantity < 1
+    )
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Danh sách sản phẩm cần kiểm tra không hợp lệ"
+    });
+  }
+
+  const danhSachSKU = items.map((item) => item.sku.trim());
+  if (new Set(danhSachSKU).size !== danhSachSKU.length) {
+    return res.status(400).json({
+      success: false,
+      message: "Danh sách sản phẩm có mã SKU bị trùng"
+    });
+  }
+
+  try {
+    const pool = await getPool();
+    const request = pool.request();
+    const thamSoSKU = danhSachSKU.map((sku, index) => {
+      const tenThamSo = `sku${index}`;
+      request.input(tenThamSo, sql.VarChar(80), sku);
+      return `@${tenThamSo}`;
+    });
+    const ketQua = await request.query(`
+      SELECT
+        bt.SKU,
+        sp.TenSanPham,
+        sp.TrangThai AS TrangThaiSanPham,
+        bt.TrangThai AS TrangThaiBienThe,
+        ISNULL(tk.SoLuongTon, 0) AS SoLuongTon
+      FROM dbo.BienTheSanPham AS bt
+      INNER JOIN dbo.SanPham AS sp ON sp.MaSanPham = bt.MaSanPham
+      LEFT JOIN dbo.TonKho AS tk ON tk.MaBienThe = bt.MaBienThe
+      WHERE bt.SKU IN (${thamSoSKU.join(", ")})
+    `);
+
+    const sanPhamTheoSKU = new Map(
+      ketQua.recordset.map((sanPham) => [sanPham.SKU, sanPham])
+    );
+    const data = items.map((item, index) => {
+      const sku = danhSachSKU[index];
+      const sanPham = sanPhamTheoSKU.get(sku);
+
+      if (!sanPham) {
+        return {
+          sku,
+          tenSanPham: item.name || sku,
+          soLuongDat: item.quantity,
+          soLuongCon: 0,
+          duHang: false,
+          lyDo: "Không tìm thấy sản phẩm trong kho"
+        };
+      }
+
+      const sanPhamDangBan =
+        sanPham.TrangThaiSanPham === "Đang bán" &&
+        sanPham.TrangThaiBienThe === "Đang bán";
+      const soLuongCon = Number(sanPham.SoLuongTon);
+
+      return {
+        sku,
+        tenSanPham: sanPham.TenSanPham,
+        soLuongDat: item.quantity,
+        soLuongCon,
+        duHang: sanPhamDangBan && soLuongCon >= item.quantity,
+        lyDo: !sanPhamDangBan
+          ? "Sản phẩm hiện không kinh doanh"
+          : soLuongCon < item.quantity
+            ? "Tồn kho không đủ"
+            : null
+      };
+    });
+    const sanPhamKhongDuHang = data.filter((item) => !item.duHang);
+
+    return res.json({
+      success: true,
+      duHang: sanPhamKhongDuHang.length === 0,
+      data,
+      sanPhamKhongDuHang
+    });
+  } catch (error) {
+    console.error("Lỗi kiểm tra tồn kho:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Không thể kiểm tra tồn kho. Vui lòng thử lại."
+    });
+  }
+}
+
 async function tangSoLuongTrongGio(req, res) {
   const maNguoiDung = layMaSoHopLe(req.params.maNguoiDung);
   const maCTGio = layMaSoHopLe(req.params.maCTGio);
@@ -404,6 +509,7 @@ async function tienHanhThanhToan(req, res) {
 module.exports = {
   layDanhSachSanPham,
   layGioHang,
+  kiemTraTonKho,
   tangSoLuongTrongGio,
   xoaSanPhamKhoiGioHang,
   tienHanhThanhToan

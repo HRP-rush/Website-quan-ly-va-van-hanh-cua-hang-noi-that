@@ -4,7 +4,13 @@ function formatCurrency(value) {
   return `${new Intl.NumberFormat("vi-VN").format(value)} ₫`;
 }
 
-function OrderSummary({ itemCount, subtotal, shipping, onCheckout }) {
+function OrderSummary({
+  itemCount,
+  subtotal,
+  shipping,
+  onCheckout,
+  isCheckingStock = false,
+}) {
   return (
     <aside className="order-column" aria-label="Tóm tắt đơn hàng">
       <section className="order-summary">
@@ -28,8 +34,13 @@ function OrderSummary({ itemCount, subtotal, shipping, onCheckout }) {
         <p className="tax-note">
           Đã bao gồm VAT. Không phát sinh chi phí khi nhận hàng.
         </p>
-        <button className="checkout-button" type="button" onClick={onCheckout}>
-          Tiến hành thanh toán
+        <button
+          className="checkout-button"
+          type="button"
+          onClick={onCheckout}
+          disabled={isCheckingStock}
+        >
+          {isCheckingStock ? "Đang kiểm tra tồn kho..." : "Tiến hành thanh toán"}
         </button>
         <p className="secure-note">
           <Icon name="shield" size={15} />

@@ -12,3 +12,47 @@
 .checkout-button:focus-visible {
   outline-offset: 3px;
 }
+
+.checkout-button:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.cart-stock-alert,
+.cart-stock-error {
+  margin-top: 20px;
+  padding: 14px 16px;
+  border: 1px solid #e8c9bd;
+  border-radius: 5px;
+  color: #793b30;
+  background: #fbf0eb;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.cart-stock-alert h2 {
+  margin: 0 0 8px;
+  color: #793b30;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cart-stock-alert ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.cart-stock-alert li strong,
+.cart-stock-alert li span {
+  display: block;
+}
+
+.cart-stock-alert p {
+  margin: 9px 0 0;
+}
+
+.cart-stock-error {
+  color: #793b30;
+}
