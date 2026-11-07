@@ -1,28 +1,137 @@
+
 const express = require("express");
+
+// Controller quản lý sản phẩm hiện tại
 const {
-  layDanhSachSanPham, layDanhMuc, themSanPham,
-  layChatLieu, layDanhSachQuanTri, doiTrangThai,
-  layChiTietSanPham, layDeChinhSua, capNhatSanPham,
-  layBienThe, themBienThe, suaBienThe, doiTrangThaiBienThe
+  layDanhMuc,
+  themSanPham,
+  layChatLieu,
+  layDanhSachQuanTri,
+  doiTrangThai,
+  layChiTietSanPham,
+  layDeChinhSua,
+  capNhatSanPham,
+  layBienThe,
+  themBienThe,
+  suaBienThe,
+  doiTrangThaiBienThe
 } = require("../controllers/sanPhamController");
-const { xacThuc, choPhepVaiTro } = require("../middleware/xacThuc");
-const { uploadAnhSanPham, uploadAnhChinhSua } = require("../middleware/uploadAnh");
+
+// Controller công khai cho khách xem sản phẩm
+const {
+  danhSach,
+  chiTiet
+} = require("../controllers/catalogController");
+
+// Middleware xác thực và phân quyền
+const {
+  xacThuc,
+  choPhepVaiTro
+} = require("../middleware/xacThuc");
+
+// Middleware upload hình ảnh
+const {
+  uploadAnhSanPham,
+  uploadAnhChinhSua
+} = require("../middleware/uploadAnh");
 
 const router = express.Router();
-const quanTri = [xacThuc, choPhepVaiTro("Quản lý", "Admin")];
 
-router.get("/", layDanhSachSanPham);                       // trang khách (công khai)
+const quanTri = [
+  xacThuc,
+  choPhepVaiTro("Quản lý", "Admin")
+];
+
+// ===========================================
+// 1. API CÔNG KHAI - KHÁCH HÀNG
+// ===========================================
+
+// Lấy danh sách sản phẩm đang bán
+router.get("/", danhSach);
+
+// Lấy chi tiết một sản phẩm
+router.get("/cong-khai/:maSanPham", chiTiet);
+
+// ===========================================
+// 2. API QUẢN TRỊ - QUẢN LÝ
+// ===========================================
+
+// Danh mục sản phẩm
 router.get("/danh-muc", ...quanTri, layDanhMuc);
+
+// Danh sách chất liệu
 router.get("/chat-lieu", ...quanTri, layChatLieu);
-router.get("/quan-tri", ...quanTri, layDanhSachQuanTri);   // danh sách có lọc + phân trang
-router.post("/them-san-pham", ...quanTri, uploadAnhSanPham, themSanPham);
-router.patch("/:maSanPham/trang-thai", ...quanTri, doiTrangThai);
-router.get("/quan-tri/:maSanPham", ...quanTri, layChiTietSanPham);
-router.get("/quan-tri/:maSanPham/chinh-sua", ...quanTri, layDeChinhSua);
-router.put("/quan-tri/:maSanPham", ...quanTri, uploadAnhChinhSua, capNhatSanPham);
-router.get("/quan-tri/:maSanPham/bien-the", ...quanTri, layBienThe);
-router.post("/quan-tri/:maSanPham/bien-the", ...quanTri, themBienThe);
-router.put("/quan-tri/bien-the/:maBienThe", ...quanTri, suaBienThe);
-router.patch("/quan-tri/bien-the/:maBienThe/trang-thai", ...quanTri, doiTrangThaiBienThe);
+
+// Danh sách sản phẩm dành cho quản trị
+router.get("/quan-tri", ...quanTri, layDanhSachQuanTri);
+
+// Thêm sản phẩm
+router.post(
+  "/them-san-pham",
+  ...quanTri,
+  uploadAnhSanPham,
+  themSanPham
+);
+
+// Cập nhật trạng thái sản phẩm
+router.patch(
+  "/:maSanPham/trang-thai",
+  ...quanTri,
+  doiTrangThai
+);
+
+// Xem chi tiết sản phẩm trong quản trị
+router.get(
+  "/quan-tri/:maSanPham",
+  ...quanTri,
+  layChiTietSanPham
+);
+
+// Lấy dữ liệu để chỉnh sửa sản phẩm
+router.get(
+  "/quan-tri/:maSanPham/chinh-sua",
+  ...quanTri,
+  layDeChinhSua
+);
+
+// Cập nhật thông tin sản phẩm
+router.put(
+  "/quan-tri/:maSanPham",
+  ...quanTri,
+  uploadAnhChinhSua,
+  capNhatSanPham
+);
+
+// ===========================================
+// 3. API QUẢN LÝ BIẾN THỂ SẢN PHẨM
+// ===========================================
+
+// Danh sách biến thể
+router.get(
+  "/quan-tri/:maSanPham/bien-the",
+  ...quanTri,
+  layBienThe
+);
+
+// Thêm biến thể
+router.post(
+  "/quan-tri/:maSanPham/bien-the",
+  ...quanTri,
+  themBienThe
+);
+
+// Sửa biến thể
+router.put(
+  "/quan-tri/bien-the/:maBienThe",
+  ...quanTri,
+  suaBienThe
+);
+
+// Thay đổi trạng thái biến thể
+router.patch(
+  "/quan-tri/bien-the/:maBienThe/trang-thai",
+  ...quanTri,
+  doiTrangThaiBienThe
+);
 
 module.exports = router;

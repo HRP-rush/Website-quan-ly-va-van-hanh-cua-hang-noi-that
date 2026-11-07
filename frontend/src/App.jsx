@@ -12,12 +12,16 @@ import ChinhSuaSanPham from "./pages/management/ChinhSuaSanPham";
 import BienTheSanPham from "./pages/management/BienTheSanPham";
 import QuanLyTonKho from "./pages/management/QuanLyTonKho";
 import ChiTietTonKho from "./pages/management/ChiTietTonKho";
+import Catalog from "./pages/customer/Catalog";
+import ProductDetail from "./pages/customer/ProductDetail";
 
 export default function App() {
   return <BrowserRouter>
     <Routes>
       {/* Trang chủ mở cho mọi khách, kể cả chưa đăng nhập */}
       <Route path="/" element={<Home/>}/>
+      <Route path="/san-pham" element={<Catalog/>}/>
+      <Route path="/san-pham/:maSanPham" element={<ProductDetail/>}/>
       <Route path="/dang-nhap" element={<Login/>}/>
       <Route path="/dang-ky" element={<Register/>}/>
       {/* Route được bảo vệ; Backend cũng phải kiểm tra quyền ở API nghiệp vụ. */}
