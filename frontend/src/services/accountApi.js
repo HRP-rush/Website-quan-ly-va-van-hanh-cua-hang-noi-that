@@ -16,12 +16,41 @@ export const accountAPI={
  status:(id,trangThai)=>request(`/api/v1/quan-tri/tai-khoan/${id}/trang-thai`,{method:'PATCH',body:{trangThai}}),
  remove:id=>request(`/api/v1/quan-tri/tai-khoan/${id}`,{method:'DELETE'})
 };
-export const categoryAPI={
- list:()=>request('/api/v1/danh-muc'),
- create:b=>request('/api/v1/danh-muc',{method:'POST',body:b}),
- update:(id,b)=>request(`/api/v1/danh-muc/${id}`,{method:'PUT',body:b}),
- remove:id=>request(`/api/v1/danh-muc/${id}`,{method:'DELETE'}),
- reorder:danhSach=>request('/api/v1/danh-muc/thu-tu/sap-xep',{method:'PATCH',body:{danhSach}})
+export const categoryAPI = {
+  list: () =>
+    request("/api/v1/danh-muc"),
+
+  create: (body) =>
+    request("/api/v1/danh-muc", {
+      method: "POST",
+      body
+    }),
+
+  update: (id, body) =>
+    request(
+      `/api/v1/danh-muc/${encodeURIComponent(id)}`,
+      {
+        method: "PUT",
+        body
+      }
+    ),
+
+  remove: (id) =>
+    request(
+      `/api/v1/danh-muc/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE"
+      }
+    ),
+
+  reorder: (danhSach) =>
+    request(
+      "/api/v1/danh-muc/thu-tu/sap-xep",
+      {
+        method: "PATCH",
+        body: { danhSach }
+      }
+    )
 };
 export const profileAPI={
  get:()=>request('/api/v1/tai-khoan/ho-so'),

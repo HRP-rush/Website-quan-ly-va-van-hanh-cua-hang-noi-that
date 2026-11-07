@@ -11,6 +11,7 @@ import ResetPassword from './pages/customer/ResetPassword';
 import AccountProfile from './pages/customer/AccountProfile';
 import AccountManagement from './pages/management/AccountManagement';
 import CategoryManagement from './pages/management/CategoryManagement';
+import WorkspaceLayout from "./components/WorkspaceLayout";
 
 export default function App() {
   return <BrowserRouter>
@@ -35,8 +36,24 @@ export default function App() {
       <Route path="/dat-lai-mat-khau" element={<ResetPassword/>}/>
       <Route path="/tai-khoan" element={<RoleGate allow={['Khách hàng']}>{()=><AccountProfile/>}</RoleGate>}/>
       <Route path="/ho-so" element={<RoleGate allow={['Admin','Quản lý','Nhân viên']}>{()=><AccountProfile/>}</RoleGate>}/>
-      <Route path="/quan-tri/danh-muc" element={<RoleGate allow={['Admin','Quản lý']}>{u=><CategoryManagement user={u}/>}</RoleGate>}/>
-      <Route path="/quan-tri/nhan-vien" element={<RoleGate allow={['Admin','Quản lý']}>{u=><AccountManagement user={u} type="staff"/>}</RoleGate>}/>
+    
+      <Route
+        path="/quan-tri/danh-muc"
+        element={
+          <RoleGate allow={["Admin", "Quản lý"]}>
+            {(u) => (
+              <WorkspaceLayout
+                user={u}
+                mode={u.TenVaiTro === "Admin" ? "admin" : "management"}
+                activeTitle="Danh mục"
+              >
+                <CategoryManagement user={u} />
+              </WorkspaceLayout>
+            )}
+          </RoleGate>
+        }
+      />
+
       <Route path="/quan-tri/khach-hang" element={<RoleGate allow={['Admin','Quản lý']}>{u=><AccountManagement user={u} type="customers"/>}</RoleGate>}/>
       <Route path="*" element={<Navigate to="/" replace/>}/>
     </Routes>
