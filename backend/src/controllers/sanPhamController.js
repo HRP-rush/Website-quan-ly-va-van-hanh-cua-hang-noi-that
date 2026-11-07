@@ -494,4 +494,80 @@ async function capNhatSanPham(req, res) {
   return res.json({ success: true, message: "Đã lưu thay đổi.", data: { MaSanPham: ma } });
 }
 
-module.exports = { layDanhSachSanPham, themSanPham, layDanhMuc, layChatLieu, layDanhSachQuanTri, doiTrangThai, layChiTietSanPham, layDeChinhSua, capNhatSanPham };
+const TRANG_THAI_BIEN_THE = ["Đang bán", "Ngừng bán"];
+const SKU_HOP_LE = /^[A-Za-z0-9._-]{1,80}$/;
+
+function tinhTrangTon(khaDung, mucCanhBao) {
+  return khaDung <= 0 ? "Hết hàng" : khaDung <= mucCanhBao ? "Sắp hết" : "Còn hàng";
+}
+
+// Đọc và kiểm tra dữ liệu form biến thể; boQuaSku = true khi sửa (SKU không đổi)
+function docBienThe(body, boQuaSku) {
+  const text = (v, max) => { const s = String(v ?? "").trim(); return s ? s.slice(0, max) : null; };
+  const rong = (v) => v === undefined || v === null || v === "";
+  const du = {
+    sku: String(body.sku || "").trim().toUpperCase(),
+    chatLieu: text(body.chatLieu, 150), mauSac: text(body.mauSac, 100), kichThuoc: text(body.kichThuoc, 150),
+    giaBan: Number(body.giaBan),
+    giaNhap: rong(body.giaNhap) ? null : Number(body.giaNhap),
+    mucCanhBao: rong(body.mucCanhBao) ? 5 : Number(body.mucCanhBao),
+    trangThai: String(body.trangThai || "Đang bán").trim()
+  };
+  let loi = null;
+  if (!boQuaSku && !SKU_HOP_LE.test(du.sku)) loi = "Mã SKU chỉ gồm chữ, số, - . _ (tối đa 80 ký tự, không khoảng trắng).";
+  else if (!du.chatLieu && !du.mauSac && !du.kichThuoc) loi = "Nhập ít nhất một thuộc tính: chất liệu, màu sắc hoặc kích thước.";
+  else if (!Number.isFinite(du.giaBan) || du.giaBan <= 0) loi = "Giá bán phải lớn hơn 0.";
+  else if (du.giaNhap !== null && (!Number.isFinite(du.giaNhap) || du.giaNhap < 0)) loi = "Giá nhập tham chiếu không hợp lệ.";
+  else if (!Number.isInteger(du.mucCanhBao) || du.mucCanhBao < 0 || du.mucCanhBao > 100000) loi = "Mức cảnh báo phải là số nguyên từ 0 trở lên.";
+  else if (!TRANG_THAI_BIEN_THE.includes(du.trangThai)) loi = "Trạng thái bán không hợp lệ.";
+  return { du, loi };
+}
+
+async function layBienThe(req, res) {
+  const ma = String(req.params.maSanPham || "").trim();
+  if (!ma || ma.length > 50) return res.status(400).json({ success: false, message: "Mã sản phẩm không hợp lệ." });
+  try {
+    const pool = await getPool();
+    const tao = () => pool.request().input("ma", sql.VarChar(50), ma);
+    const btReq = tao();
+    const dsTt = DON_DANG_GIU_HANG.map((t, i) => { btReq.input(`tt${i}`, sql.NVarChar(40), t); return `@tt${i}`; });
+
+    const [spRs, btRs] = await Promise.all([
+      tao().query(`
+        SELECT sp.MaSanPham, sp.TenSanPham, sp.TrangThai, dm.TenDanhMuc,
+               COALESCE(sp.GiaCoBan, (SELECT MIN(GiaBan) FROM dbo.BienTheSanPham WHERE MaSanPham = sp.MaSanPham)) AS Gia,
+               (SELECT TOP (1) a.DuongDan FROM dbo.AnhSanPham a WHERE a.MaSanPham = sp.MaSanPham
+                ORDER BY a.LaAnhDaiDien DESC, a.MaAnh ASC) AS DuongDanAnh
+        FROM dbo.SanPham sp
+        INNER JOIN dbo.DanhMuc dm ON dm.MaDanhMuc = sp.MaDanhMuc
+        WHERE sp.MaSanPham = @ma`),
+      btReq.query(`
+        SELECT b.MaBienThe, b.SKU, b.MauSac, b.ChatLieu, b.KichThuoc, b.GiaBan, b.GiaNhapThamChieu, b.TrangThai,
+               ISNULL(t.SoLuongTon, 0) AS SoLuongTon, ISNULL(t.MucCanhBao, 5) AS MucCanhBao, ISNULL(g.DaGiu, 0) AS DaGiu
+        FROM dbo.BienTheSanPham b
+        LEFT JOIN dbo.TonKho t ON t.MaBienThe = b.MaBienThe
+        OUTER APPLY (
+          SELECT SUM(ct.SoLuong) AS DaGiu FROM dbo.CTDonHang ct
+          INNER JOIN dbo.DonHang dh ON dh.MaDon = ct.MaDon
+          WHERE ct.MaBienThe = b.MaBienThe AND dh.TrangThai IN (${dsTt.join(",")})
+        ) g
+        WHERE b.MaSanPham = @ma
+        ORDER BY b.MaBienThe`)
+    ]);
+    if (!spRs.recordset.length) return res.status(404).json({ success: false, message: "Không tìm thấy sản phẩm." });
+
+    const bienThe = btRs.recordset.map((b) => {
+      const khaDung = Math.max(b.SoLuongTon - b.DaGiu, 0);
+      return { ...b, KhaDung: khaDung, TinhTrangTon: tinhTrangTon(khaDung, b.MucCanhBao) };
+    });
+    res.json({ success: true, data: { sanPham: spRs.recordset[0], bienThe } });
+  } catch (error) {
+    console.error("Lỗi lấy biến thể:", error.message);
+    res.status(500).json({ success: false, message: "Không thể lấy danh sách biến thể." });
+  }
+}
+
+module.exports = { layDanhSachSanPham, themSanPham, layDanhMuc,
+                   layChatLieu, layDanhSachQuanTri, doiTrangThai,
+                   layChiTietSanPham, layDeChinhSua, capNhatSanPham,
+                   layBienThe};

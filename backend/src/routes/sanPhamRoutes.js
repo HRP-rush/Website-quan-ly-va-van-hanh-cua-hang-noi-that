@@ -2,7 +2,8 @@ const express = require("express");
 const {
   layDanhSachSanPham, layDanhMuc, themSanPham,
   layChatLieu, layDanhSachQuanTri, doiTrangThai,
-  layChiTietSanPham, layDeChinhSua, capNhatSanPham
+  layChiTietSanPham, layDeChinhSua, capNhatSanPham,
+  layBienThe
 } = require("../controllers/sanPhamController");
 const { xacThuc, choPhepVaiTro } = require("../middleware/xacThuc");
 const { uploadAnhSanPham, uploadAnhChinhSua } = require("../middleware/uploadAnh");
@@ -19,5 +20,6 @@ router.patch("/:maSanPham/trang-thai", ...quanTri, doiTrangThai);
 router.get("/quan-tri/:maSanPham", ...quanTri, layChiTietSanPham);
 router.get("/quan-tri/:maSanPham/chinh-sua", ...quanTri, layDeChinhSua);
 router.put("/quan-tri/:maSanPham", ...quanTri, uploadAnhChinhSua, capNhatSanPham);
+router.get("/quan-tri/:maSanPham/bien-the", ...quanTri, layBienThe);
 
 module.exports = router;
