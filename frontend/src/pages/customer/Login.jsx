@@ -23,7 +23,9 @@ export default function Login() {
     try {
       setLoading(true);
       const user = await login(email.trim(), matKhau, ghiNho);
-      navigate(getRolePath(user.TenVaiTro), { replace: true, state: null });
+      const from=location.state?.from;
+      const safeFrom=typeof from==='string' && from.startsWith('/') && !from.startsWith('//') && !from.startsWith('/\\') ? from : '/';
+      navigate(user.TenVaiTro==='Khách hàng'?safeFrom:getRolePath(user.TenVaiTro), { replace: true, state: null });
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }
@@ -45,7 +47,7 @@ export default function Login() {
               <button type="button" onClick={()=>setShowPassword(v=>!v)} aria-label={showPassword?"Ẩn mật khẩu":"Hiện mật khẩu"}>
                 {showPassword?<EyeOff size={19}/>:<Eye size={19}/>}</button></div></div>
           <div className="login-options"><label className="remember-me"><input type="checkbox" checked={ghiNho} onChange={e=>setGhiNho(e.target.checked)}/> Ghi nhớ đăng nhập</label>
-            <Link to="/quen-mat-khau">Quên mật khẩu?</Link></div>
+            <span title="Chức năng khôi phục mật khẩu sẽ phát triển sau">Quên mật khẩu? Vui lòng liên hệ quản lý</span></div>
           {error && <div className="login-error" role="alert">{error}</div>}
           <button type="submit" className="login-submit" disabled={loading}>{loading?"Đang đăng nhập...":"Đăng nhập"}</button>
           <p className="login-register">Chưa có tài khoản? <Link to="/dang-ky">Đăng ký ngay</Link></p>

@@ -1,12 +1,12 @@
 
 const menus = [
-  { label: "Trang chủ", href: "#home" },
-  { label: "Sản phẩm", href: "#products" },
+  { label: "Trang chủ", href: "/#home" },
+  { label: "Sản phẩm", href: "/san-pham" },
   { label: "Phòng khách", category: "Phòng khách" },
   { label: "Phòng ngủ", category: "Phòng ngủ" },
   { label: "Phòng ăn", category: "Phòng ăn" },
-  { label: "Bộ sưu tập", href: "#inspiration" },
-  { label: "Về chúng tôi", href: "#story" }
+  { label: "Bộ sưu tập", href: "/#inspiration" },
+  { label: "Về chúng tôi", href: "/#story" }
 ];
 
 export default function Navbar({
@@ -15,7 +15,8 @@ export default function Navbar({
   onCategoryChange
 }) {
   function selectCategory(category) {
-    onCategoryChange(category);
+    if (typeof onCategoryChange === "function") onCategoryChange(category);
+    else window.location.assign(`/san-pham?danh-muc=${encodeURIComponent(category)}`);
     closeMobile();
 
     document.getElementById("products")?.scrollIntoView({

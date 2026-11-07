@@ -1,72 +1,22 @@
-
-import { useState } from "react";
-
-const formatPrice = (price) => {
-  if (price === null || price === undefined || price === "") {
-    return "Liên hệ để biết giá";
-  }
-
-  const number = Number(price);
-  if (!Number.isFinite(number)) return "Liên hệ để biết giá";
-
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0
-  }).format(number);
-};
-
-export default function ProductCard({ product }) {
-  const [imageFailed, setImageFailed] = useState(false);
-
-  const image = product.image || "/images/placeholder-product.jpg";
-
-  const stockText =
-    product.stock === null || product.stock === undefined
-      ? "Liên hệ để kiểm tra hàng"
-      : product.stock > 0
-        ? "Còn sản phẩm"
-        : "Tạm hết hàng";
-
-  return (
-    <article className="product-card">
-      <div className="product-image-wrap">
-        {imageFailed ? (
-          <div className="product-image-fallback">
-            MỘC AN
-          </div>
-        ) : (
-          <img
-            src={product.image}
-            alt={product.name}
-            loading="lazy"
-            onError={() => setImageFailed(true)}
-          />
-        )}
-
-        {product.label && (
-          <span className="product-label">{product.label}</span>
-        )}
-      </div>
-
-      <div className="product-content">
-        <p className="product-category">
-          {product.category}
-        </p>
-
-        <h3 className="product-name">{product.name}</h3>
-
-        <p className="product-price">
-          {formatPrice(product.price)}
-        </p>
-
-        <p className={`product-stock ${
-          product.stock === 0 ? "out-of-stock" : ""
-        }`}>
-          <span className="stock-dot" />
-          {stockText}
-        </p>
-      </div>
-    </article>
-  );
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ShoppingBag, ArrowUpRight } from 'lucide-react';
+import { formatPrice } from '../services/productService';
+export default function ProductCard({product,onAdd}){
+ const [failed,setFailed]=useState(false);
+ const url=`/san-pham/${encodeURIComponent(product.id)}`;
+ return <article className="product-card">
+  <Link className="product-image-wrap moc-product-image" to={url} aria-label={`Xem ${product.name}`}>
+   <img src={failed?'/images/placeholder-product.jpg':product.image} onError={()=>setFailed(true)} alt={product.name} loading="lazy" />
+   <span className="moc-product-view">Xem chi tiết <ArrowUpRight size={15}/></span>
+  </Link>
+  <div className="product-content">
+   <p className="product-category">{product.category||'Nội thất Mộc An'}</p>
+   <h3 className="product-name"><Link to={url}>{product.name}</Link></h3>
+   <p className="moc-product-description">{product.shortDescription||product.description||'Thiết kế dành cho không gian sống.'}</p>
+   <p className="product-price">{formatPrice(product.price)}</p>
+   <p className={`product-stock ${product.stock===0?'out-of-stock':''}`}><span className="stock-dot"/>{product.stock==null?'Liên hệ kiểm tra tồn kho':product.stock>0?`Tồn kho: ${product.stock}`:'Tạm hết hàng'}</p>
+   <div className="moc-card-actions"><Link to={url} className="moc-outline-btn">Chi tiết</Link><button type="button" className="moc-dark-btn" onClick={()=>onAdd?.(product)}><ShoppingBag size={15}/> Thêm vào giỏ</button></div>
+  </div>
+ </article>;
 }
