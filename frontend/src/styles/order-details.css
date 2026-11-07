@@ -25,23 +25,36 @@
   cursor: pointer;
 }
 
+.order-detail-breadcrumbs > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .order-detail-heading {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title back"
+    "status back";
+  align-items: start;
+  column-gap: 20px;
+  row-gap: 12px;
   margin: 24px 0 30px;
-  padding-right: 190px;
+}
+
+.order-detail-heading > div {
+  grid-area: title;
 }
 
 .order-detail-heading h1 {
+  min-width: 0;
   margin: 0 0 8px;
   color: var(--color-ink);
   font-family: var(--font-serif);
   font-size: clamp(29px, 3.2vw, 40px);
   font-weight: 400;
   letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
 }
 
 .order-detail-heading p {
@@ -51,6 +64,7 @@
 }
 
 .order-detail-back-link {
+  grid-area: back;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -64,9 +78,8 @@
 }
 
 .order-detail-status {
-  position: absolute;
-  top: 62px;
-  left: 0;
+  grid-area: status;
+  justify-self: start;
   padding: 5px 9px;
   border-radius: 3px;
   color: #a77748;
@@ -215,6 +228,7 @@
   color: var(--color-muted);
   font-size: 10px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .order-detail-product-info strong,
@@ -408,22 +422,21 @@
   }
 
   .order-detail-heading {
-    display: block;
-    margin: 22px 0 46px;
-    padding-right: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "title"
+      "status"
+      "back";
+    row-gap: 10px;
+    margin: 22px 0 30px;
   }
 
   .order-detail-heading h1 {
-    font-size: 30px;
+    font-size: clamp(24px, 8vw, 30px);
   }
 
   .order-detail-back-link {
-    margin-top: 12px;
-  }
-
-  .order-detail-status {
-    top: auto;
-    bottom: -34px;
+    margin: 0;
   }
 
   .order-tracking {
