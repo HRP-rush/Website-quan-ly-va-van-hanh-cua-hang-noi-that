@@ -247,7 +247,7 @@ async function doiTrangThai(req, res) {
   }
 }
 
-const DON_DANG_GIU_HANG = ["Chờ xác nhận", "Đã xác nhận"];
+const { DON_DANG_GIU_HANG } = require("../config/donHang");
 
 async function layChiTietSanPham(req, res) {
   const maSanPham = String(req.params.maSanPham || "").trim();
