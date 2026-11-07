@@ -102,8 +102,8 @@ export default function QuanLyTonKho({ user, mode }) {
             <td>{r.SoLuongTon}</td><td>{r.DaGiu}</td><td>{r.KhaDung}</td>
             <td><span className={`tk-chip ${LOP[r.TinhTrang]}`}>{r.TinhTrang}</span></td>
             <td className="tk-actions">
-              <button type="button" onClick={() => navigate(`${base}/san-pham/${encodeURIComponent(r.MaSanPham)}/bien-the`)}>Chi tiết</button>
-              {" "}· <span title={chuaCo}>Lịch sử</span>
+              <button type="button" onClick={() => navigate(`${base}/kho-hang/${encodeURIComponent(r.MaBienThe)}`)}>Chi tiết</button>
+              {" "}· <button type="button" onClick={() => navigate(`${base}/kho-hang/${encodeURIComponent(r.MaBienThe)}#lich-su`)}>Lịch sử</button>
             </td>
           </tr>)}
           {!loading && kq.data.length === 0 && <tr><td colSpan={8} className="tk-empty">

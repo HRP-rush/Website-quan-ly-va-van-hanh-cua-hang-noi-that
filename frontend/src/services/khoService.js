@@ -18,3 +18,8 @@ export async function listStock(params) {
   const res = await fetch(`${API_URL}/api/kho/ton-kho?${qs}`, { credentials: "include" });
   return parse(res); // { data, total, tongQuan, canhBao, tongCanhBao, trang, soDong }
 }
+
+export async function getStockDetail(maBienThe) {
+  const res = await fetch(`${API_URL}/api/kho/ton-kho/${encodeURIComponent(maBienThe)}`, { credentials: "include" });
+  return (await parse(res)).data; // { bienThe, lichSu, lechSo, phieuNhapNhap }
+}
