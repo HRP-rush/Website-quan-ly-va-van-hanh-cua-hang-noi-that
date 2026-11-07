@@ -9,7 +9,12 @@ function formatCurrency(value) {
 }
 
 function Checkout({ items, subtotal, shipping, onBack }) {
-  const [submitted, setSubmitted] = useState(false);
+  const [step, setStep] = useState(1);
+  const [recipient, setRecipient] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState("COD");
+  const [paymentNotice, setPaymentNotice] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [couponNotice, setCouponNotice] = useState("");
   const [provinces, setProvinces] = useState([]);
   const [wards, setWards] = useState([]);
   const [selectedProvince, setSelectedProvince] = useState("");
@@ -19,6 +24,12 @@ function Checkout({ items, subtotal, shipping, onBack }) {
   const [locationError, setLocationError] = useState("");
   const [retryLocations, setRetryLocations] = useState(0);
   const itemCount = items.reduce((total, item) => total + item.quantity, 0);
+  const provinceName = provinces.find(
+    (province) => String(province.code) === selectedProvince,
+  )?.name;
+  const wardName = wards.find(
+    (ward) => String(ward.code) === selectedWard,
+  )?.name;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -87,7 +98,25 @@ function Checkout({ items, subtotal, shipping, onBack }) {
 
   function handleSubmit(event) {
     event.preventDefault();
-    setSubmitted(true);
+    const formData = new FormData(event.currentTarget);
+    setRecipient(Object.fromEntries(formData.entries()));
+    setPaymentNotice("");
+    setStep(2);
+  }
+
+  function handlePaymentContinue() {
+    setPaymentNotice(
+      "Phương thức đã chọn. Chức năng xác nhận đơn hàng và xử lý thanh toán chưa được kết nối.",
+    );
+  }
+
+  function handleApplyCoupon(event) {
+    event.preventDefault();
+    setCouponNotice(
+      couponCode.trim()
+        ? "Mã ưu đãi chưa được kết nối. Đơn hàng hiện chưa áp dụng giảm giá."
+        : "Vui lòng nhập mã ưu đãi.",
+    );
   }
 
   return (
@@ -110,17 +139,28 @@ function Checkout({ items, subtotal, shipping, onBack }) {
 
       <div className="checkout-heading">
         <h1>Hoàn thiện tổ ấm của bạn</h1>
-        <p>Chia sẻ địa chỉ để Mộc An chuẩn bị hành trình đến nhà bạn.</p>
+        <p>
+          {step === 1
+            ? "Chia sẻ địa chỉ để Mộc An chuẩn bị hành trình đến nhà bạn."
+            : "Lựa chọn phương thức thanh toán phù hợp với bạn."}
+        </p>
       </div>
 
       <ol className="checkout-progress" aria-label="Các bước thanh toán">
-        <li className="is-current" aria-current="step">
-          <span>1</span>
-          <strong>Thông tin giao hàng</strong>
+        <li
+          className={step === 1 ? "is-current" : "is-complete"}
+          aria-current={step === 1 ? "step" : undefined}
+        >
+          <span>{step === 1 ? "1" : "✓"}</span>
+          {step === 1 ? (
+            <strong>Thông tin giao hàng</strong>
+          ) : (
+            <span>Thông tin giao hàng</span>
+          )}
         </li>
-        <li>
+        <li className={step === 2 ? "is-current" : ""} aria-current={step === 2 ? "step" : undefined}>
           <span>2</span>
-          <span>Thanh toán</span>
+          {step === 2 ? <strong>Thanh toán</strong> : <span>Thanh toán</span>}
         </li>
         <li>
           <span>3</span>
@@ -129,6 +169,7 @@ function Checkout({ items, subtotal, shipping, onBack }) {
       </ol>
 
       <div className="checkout-layout">
+        {step === 1 ? (
         <form className="checkout-form" onSubmit={handleSubmit}>
           <section className="checkout-form-section">
             <div className="checkout-section-heading">
@@ -142,6 +183,7 @@ function Checkout({ items, subtotal, shipping, onBack }) {
                 id="recipient-name"
                 name="recipientName"
                 placeholder="Nguyễn Minh Anh"
+                defaultValue={recipient?.recipientName ?? ""}
                 required
               />
             </div>
@@ -153,6 +195,7 @@ function Checkout({ items, subtotal, shipping, onBack }) {
                   id="recipient-phone"
                   name="phone"
                   placeholder="090 123 4567"
+                  defaultValue={recipient?.phone ?? ""}
                   required
                   type="tel"
                 />
@@ -164,6 +207,7 @@ function Checkout({ items, subtotal, shipping, onBack }) {
                   id="recipient-email"
                   name="email"
                   placeholder="minh.anh@example.com"
+                  defaultValue={recipient?.email ?? ""}
                   required
                   type="email"
                 />
@@ -181,11 +225,17 @@ function Checkout({ items, subtotal, shipping, onBack }) {
                 <select
                   autoComplete="address-level1"
                   onChange={(event) => {
-                    setSelectedProvince(event.target.value);
+                    const provinceCode = event.target.value;
+                    setSelectedProvince(provinceCode);
                     setSelectedWard("");
                     setWards([]);
                     setLocationError("");
-                    setIsLoadingWards(Boolean(event.target.value));
+                    setIsLoadingWards(Boolean(provinceCode));
+                    setRecipient((current) =>
+                      current
+                        ? { ...current, city: provinceCode, ward: "" }
+                        : current,
+                    );
                   }}
                   value={selectedProvince}
                   id="recipient-city"
@@ -207,7 +257,13 @@ function Checkout({ items, subtotal, shipping, onBack }) {
                 <label htmlFor="recipient-ward">Phường / Xã *</label>
                 <select
                   autoComplete="address-level2"
-                  onChange={(event) => setSelectedWard(event.target.value)}
+                  onChange={(event) => {
+                    const wardCode = event.target.value;
+                    setSelectedWard(wardCode);
+                    setRecipient((current) =>
+                      current ? { ...current, ward: wardCode } : current,
+                    );
+                  }}
                   value={selectedWard}
                   id="recipient-ward"
                   name="ward"
@@ -248,6 +304,7 @@ function Checkout({ items, subtotal, shipping, onBack }) {
                 id="recipient-address"
                 name="address"
                 placeholder="Căn hộ, số nhà, tên đường..."
+                defaultValue={recipient?.address ?? ""}
                 required
               />
               <small>Địa chỉ này dùng cho giao hàng thực tế.</small>
@@ -260,6 +317,7 @@ function Checkout({ items, subtotal, shipping, onBack }) {
                 id="delivery-note"
                 name="deliveryNote"
                 placeholder="Ví dụ: Vui lòng gọi trước khi giao hàng."
+                defaultValue={recipient?.deliveryNote ?? ""}
                 rows="3"
               />
             </div>
@@ -283,13 +341,129 @@ function Checkout({ items, subtotal, shipping, onBack }) {
               Tiếp tục đến thanh toán <span aria-hidden="true">→</span>
             </button>
           </div>
-          {submitted && (
-            <p className="checkout-form-status" role="status">
-              Thông tin đã hợp lệ trên biểu mẫu. Hiện chưa có dịch vụ xử lý đơn
-              hàng, nên chưa thể chuyển sang thanh toán.
-            </p>
-          )}
         </form>
+        ) : (
+          <section className="checkout-form checkout-payment-step">
+            <div className="checkout-recipient-card">
+              <div>
+                <strong>
+                  Giao đến {recipient?.recipientName} · {recipient?.phone}
+                </strong>
+                <p>
+                  {recipient?.address}, {wardName}, {provinceName}
+                </p>
+              </div>
+              <button
+                className="checkout-edit-recipient"
+                onClick={() => setStep(1)}
+                type="button"
+              >
+                Thay đổi
+              </button>
+            </div>
+
+            <fieldset className="payment-methods">
+              <legend>Phương thức thanh toán</legend>
+              <label className={`payment-option ${paymentMethod === "COD" ? "is-selected" : ""}`}>
+                <input
+                  checked={paymentMethod === "COD"}
+                  name="paymentMethod"
+                  onChange={() => setPaymentMethod("COD")}
+                  type="radio"
+                  value="COD"
+                />
+                <span className="payment-option-copy">
+                  <strong>Thanh toán khi nhận hàng (COD)</strong>
+                  <small>
+                    Thanh toán {formatCurrency(subtotal + shipping)} cho nhân
+                    viên giao hàng.
+                  </small>
+                </span>
+                <span className="payment-option-icon" aria-hidden="true">▣</span>
+              </label>
+              <label className={`payment-option ${paymentMethod === "BANK_TRANSFER" ? "is-selected" : ""}`}>
+                <input
+                  checked={paymentMethod === "BANK_TRANSFER"}
+                  name="paymentMethod"
+                  onChange={() => setPaymentMethod("BANK_TRANSFER")}
+                  type="radio"
+                  value="BANK_TRANSFER"
+                />
+                <span className="payment-option-copy">
+                  <strong>Chuyển khoản ngân hàng</strong>
+                  <small>Chỉ mô phỏng quy trình, không chuyển tiền thực tế.</small>
+                  <span className="payment-coming-soon">Thanh toán mô phỏng</span>
+                </span>
+                <span className="payment-option-icon" aria-hidden="true">▤</span>
+              </label>
+              <label className={`payment-option ${paymentMethod === "ONLINE" ? "is-selected" : ""}`}>
+                <input
+                  checked={paymentMethod === "ONLINE"}
+                  name="paymentMethod"
+                  onChange={() => setPaymentMethod("ONLINE")}
+                  type="radio"
+                  value="ONLINE"
+                />
+                <span className="payment-option-copy">
+                  <strong>Thanh toán trực tuyến</strong>
+                  <small>Mở rộng cổng thanh toán, không thu tiền thật.</small>
+                  <span className="payment-coming-soon">Thanh toán mô phỏng</span>
+                </span>
+                <span className="payment-option-icon" aria-hidden="true">▱</span>
+              </label>
+            </fieldset>
+
+            <form className="checkout-coupon" onSubmit={handleApplyCoupon}>
+              <label htmlFor="checkout-coupon-code">Mã ưu đãi</label>
+              <span>Nhập mã nếu bạn có</span>
+              <div>
+                <input
+                  id="checkout-coupon-code"
+                  onChange={(event) => {
+                    setCouponCode(event.target.value);
+                    setCouponNotice("");
+                  }}
+                  placeholder="Mã giảm giá"
+                  value={couponCode}
+                />
+                <button type="submit">Áp dụng</button>
+              </div>
+              <small>Chưa áp dụng ưu đãi. Giảm giá hiện tại: 0 ₫.</small>
+              {couponNotice && <p role="status">{couponNotice}</p>}
+            </form>
+
+            <p className="checkout-info">
+              <Icon name="info" size={16} />
+              <span>
+                Với COD, bạn thanh toán khi nhận hàng. Các phương thức trực
+                tuyến hiện chỉ là giao diện mô phỏng.
+              </span>
+            </p>
+
+            <div className="checkout-actions">
+              <button
+                className="checkout-back"
+                onClick={() => setStep(1)}
+                type="button"
+              >
+                <Icon name="arrowLeft" size={15} />
+                Thông tin giao hàng
+              </button>
+              <button
+                className="checkout-continue"
+                onClick={handlePaymentContinue}
+                type="button"
+              >
+                Kiểm tra đơn hàng <span aria-hidden="true">→</span>
+              </button>
+            </div>
+            {paymentNotice && (
+              <p className="checkout-form-status" role="status">
+                {paymentNotice}
+              </p>
+            )}
+          </section>
+        )}
 
         <aside className="checkout-order" aria-label="Đơn hàng của bạn">
           <h2>Đơn hàng của bạn</h2>
