@@ -1,16 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Icon from "../../components/Icons.jsx";
 import "../../styles/checkout.css";
 
-const wardsByCity = {
-  "Thành phố Hồ Chí Minh": [
-    "Phường An Khánh",
-    "Phường Bến Nghé",
-    "Phường Thảo Điền",
-  ],
-  "Hà Nội": ["Phường Hoàn Kiếm", "Phường Cửa Nam", "Phường Ba Đình"],
-  "Đà Nẵng": ["Phường Hải Châu", "Phường Thanh Khê", "Phường Sơn Trà"],
-};
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 function formatCurrency(value) {
   return `${new Intl.NumberFormat("vi-VN").format(value)} ₫`;
@@ -18,9 +10,80 @@ function formatCurrency(value) {
 
 function Checkout({ items, subtotal, shipping, onBack }) {
   const [submitted, setSubmitted] = useState(false);
-  const [selectedCity, setSelectedCity] = useState("Thành phố Hồ Chí Minh");
-  const [selectedWard, setSelectedWard] = useState("Phường An Khánh");
+  const [provinces, setProvinces] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [selectedWard, setSelectedWard] = useState("");
+  const [isLoadingProvinces, setIsLoadingProvinces] = useState(true);
+  const [isLoadingWards, setIsLoadingWards] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [retryLocations, setRetryLocations] = useState(0);
   const itemCount = items.reduce((total, item) => total + item.quantity, 0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadProvinces() {
+      setIsLoadingProvinces(true);
+      setLocationError("");
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/dia-chi/tinh-thanh`, {
+          signal: controller.signal,
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "Không thể tải tỉnh, thành.");
+        }
+        setProvinces(result.data);
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          console.error("Lỗi tải tỉnh, thành:", error);
+          setLocationError(error.message);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingProvinces(false);
+        }
+      }
+    }
+
+    loadProvinces();
+    return () => controller.abort();
+  }, [retryLocations]);
+
+  useEffect(() => {
+    if (!selectedProvince) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+
+    async function loadWards() {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/dia-chi/tinh-thanh/${selectedProvince}/phuong-xa`,
+          { signal: controller.signal },
+        );
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "Không thể tải phường, xã.");
+        }
+        setWards(result.data);
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          console.error("Lỗi tải phường, xã:", error);
+          setLocationError(error.message);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingWards(false);
+        }
+      }
+    }
+
+    loadWards();
+    return () => controller.abort();
+  }, [selectedProvince, retryLocations]);
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -118,17 +181,25 @@ function Checkout({ items, subtotal, shipping, onBack }) {
                 <select
                   autoComplete="address-level1"
                   onChange={(event) => {
-                    const city = event.target.value;
-                    setSelectedCity(city);
-                    setSelectedWard(wardsByCity[city][0]);
+                    setSelectedProvince(event.target.value);
+                    setSelectedWard("");
+                    setWards([]);
+                    setLocationError("");
+                    setIsLoadingWards(Boolean(event.target.value));
                   }}
-                  value={selectedCity}
+                  value={selectedProvince}
                   id="recipient-city"
                   name="city"
+                  disabled={isLoadingProvinces || provinces.length === 0}
                   required
                 >
-                  {Object.keys(wardsByCity).map((city) => (
-                    <option key={city} value={city}>{city}</option>
+                  <option value="" disabled>
+                    {isLoadingProvinces ? "Đang tải tỉnh, thành..." : "Chọn tỉnh / thành phố"}
+                  </option>
+                  {provinces.map((province) => (
+                    <option key={province.code} value={province.code}>
+                      {province.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -140,14 +211,36 @@ function Checkout({ items, subtotal, shipping, onBack }) {
                   value={selectedWard}
                   id="recipient-ward"
                   name="ward"
+                  disabled={!selectedProvince || isLoadingWards || wards.length === 0}
                   required
                 >
-                  {wardsByCity[selectedCity].map((ward) => (
-                    <option key={ward} value={ward}>{ward}</option>
+                  <option value="" disabled>
+                    {isLoadingWards ? "Đang tải phường, xã..." : "Chọn phường / xã"}
+                  </option>
+                  {wards.map((ward) => (
+                    <option key={ward.code} value={ward.code}>
+                      {ward.name}
+                    </option>
                   ))}
                 </select>
               </div>
             </div>
+            {locationError && (
+              <p className="checkout-location-error" role="alert">
+                {locationError}
+                <button
+                  onClick={() => {
+                    setLocationError("");
+                    setIsLoadingProvinces(true);
+                    setIsLoadingWards(Boolean(selectedProvince));
+                    setRetryLocations((attempt) => attempt + 1);
+                  }}
+                  type="button"
+                >
+                  Thử tải lại
+                </button>
+              </p>
+            )}
             <div className="checkout-field">
               <label htmlFor="recipient-address">Địa chỉ chi tiết *</label>
               <input

@@ -6,6 +6,7 @@ const cors = require("cors");
 const { getPool } = require("./config/db");
 
 const sanPhamRoutes = require("./routes/sanPhamRoutes");
+const diaChiRoutes = require("./routes/diaChiRoutes");
 
 const app = express();
 const PORT = Number(process.env.PORT || 5000);
@@ -46,6 +47,7 @@ app.get("/api/health/db", async (req, res) => {
 });
 
 app.use("/api", sanPhamRoutes);
+app.use("/api/dia-chi", diaChiRoutes);
 
 app.listen(PORT, () => {
   console.log(
