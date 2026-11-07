@@ -5,6 +5,7 @@ import Register from "./pages/customer/Register";
 import RoleGate from "./components/RoleGate";
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 import ManagementDashboard from "./pages/management/ManagementDashboard";
+import ThemSanPham from "./pages/management/themSanPham";
 
 export default function App() {
   return <BrowserRouter>
@@ -23,6 +24,10 @@ export default function App() {
       {/* Trang hồ sơ CUS-15 sẽ được xây dựng sau; tạm về trang chủ nếu có phiên khách */}
       <Route path="/tai-khoan" element={<RoleGate allow={["Khách hàng"]}>
         {() => <Navigate to="/" replace/>}</RoleGate>}/>
+      <Route path="/quan-ly/san-pham/them" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => <ThemSanPham user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/admin-san-pham/them" element={<RoleGate allow={["Admin"]}>
+        {(user) => <ThemSanPham user={user} mode="admin"/>}</RoleGate>}/>
       <Route path="*" element={<Navigate to="/" replace/>}/>
     </Routes>
   </BrowserRouter>;

@@ -17,7 +17,7 @@ const icons = {
 };
 
 const staffNav = [
-  { title: "Tổng quan", icon: "overview", current: true },
+  { title: "Tổng quan", icon: "overview", path: "" },
   { title: "Đơn hàng", icon: "orders" },
   { title: "Giao hàng", icon: "delivery" },
   { title: "Tồn kho", icon: "inventory" },
@@ -25,10 +25,10 @@ const staffNav = [
   { title: "Lịch sử kho", icon: "history" }
 ];
 const managementNav = [
-  { group: "TỔNG QUAN", items: [{ title: "Tổng quan", icon: "overview", current: true }] },
+  { group: "TỔNG QUAN", items: [{ title: "Tổng quan", icon: "overview", path: "" }] },
   { group: "SẢN PHẨM", items: [
-    { title: "Danh mục", icon: "category" },
-    { title: "Sản phẩm", icon: "products" },
+    { title: "Danh mục", icon: "category"},
+    { title: "Sản phẩm", icon: "products", path: "/san-pham/them" },
     { title: "Biến thể sản phẩm", icon: "variants" }
   ] },
   { group: "KHO & CUNG ỨNG", items: [
@@ -51,17 +51,20 @@ const managementNav = [
   ] }
 ];
 
-function NavItem({ item, onClose }) {
+function NavItem({ item, active, base, onClose }) {
   const Icon = icons[item.icon] || LayoutDashboard;
-  // Chức năng chưa có trang được vô hiệu hóa để không tạo liên kết giả.
-  return <button type="button" className={`workspace-nav-item ${item.current ? "is-active" : ""}`}
-    disabled={!item.current} title={item.current ? "Trang tổng quan" : "Sẽ triển khai ở màn hình tiếp theo"}
-    onClick={onClose}>
+  const navigate = useNavigate();
+  const enabled = item.path != undefined; // Nếu chưa có path, tạm thời chưa triển khai màn hình
+  return <button type="button" className={`workspace-nav-item ${active ? "is-active" : ""}`}
+    disabled={!enabled} title={enabled ? item.title : "Sẽ triển khai ở màn hình tiếp theo"}
+    onClick={() => { if (enabled) navigate(base + item.path); onClose(); }}>
     <Icon size={17}/><span>{item.title}</span>
   </button>;
 }
-export default function WorkspaceLayout({ user, mode, children }) {
+
+export default function WorkspaceLayout({ user, mode, activeTitle = "Tổng quan", children }) {
   const navigate = useNavigate();
+  const base = mode === "admin" ? "/admin" : "/quan-ly";
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
   const isStaff = mode === "employee";
@@ -77,9 +80,17 @@ export default function WorkspaceLayout({ user, mode, children }) {
       <div className="workspace-brand"><span>MỘC AN</span><small>INTERIOR</small></div>
       <div className="workspace-side-caption">{isStaff ? "CỔNG NHÂN VIÊN" : "CỔNG QUẢN TRỊ"}</div>
       <nav aria-label="Điều hướng khu vực làm việc">
-        {isStaff ? staffNav.map(item => <NavItem item={item} key={item.title} onClose={() => setSidebarOpen(false)}/>)
+        {isStaff ? staffNav.map(item => <NavItem item={item} key={item.title} active={item.title === activeTitle} base={base} onClose={() => setSidebarOpen(false)}/>)
           : managementNav.map(group => <div className="workspace-nav-group" key={group.group}>
-              <p>{group.group}</p>{group.items.map(item => <NavItem item={item} key={item.title} onClose={() => setSidebarOpen(false)}/>)}
+              <p>{group.group}</p>{group.items.map(item => 
+                <NavItem
+                  item={item}
+                  key={item.title}
+                  active={item.title === activeTitle}
+                  base={base}
+                  onClose={() => setSidebarOpen(false)}
+                />
+                )}
             </div>)}
         <button className="workspace-nav-item" disabled title="Hồ sơ được triển khai trong giai đoạn kế tiếp">
           <UserRound size={17}/> <span>Tài khoản của tôi</span>
