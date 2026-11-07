@@ -1,0 +1,13 @@
+const sql=require('mssql');
+const bcrypt=require('bcryptjs');
+const crypto=require('crypto');
+const {getPool}=require('../config/db');
+const ROLES=['Khách hàng','Nhân viên','Quản lý','Admin'];
+const validEmail=v=>typeof v==='string' && v.length<=254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+const validPass=v=>typeof v==='string' && v.length>=8 && Buffer.byteLength(v,'utf8')<=72;
+const validName=v=>typeof v==='string' && v.trim().length>=2 && v.trim().length<=150;
+const validPhone=v=>v==null || v==='' || (typeof v==='string' && /^0\d{9,10}$/.test(v));
+const safeUser=r=>r && ({MaNguoiDung:r.MaNguoiDung,HoTen:r.HoTen,Email:r.Email,SoDienThoai:r.SoDienThoai,DiaChi:r.DiaChi,AnhDaiDien:r.AnhDaiDien,TrangThai:r.TrangThai,TenVaiTro:r.TenVaiTro,NgayTao:r.NgayTao});
+const failed=(res,e)=>{console.error('[TaiKhoan API]',e.message);const code=e.number||e.originalError?.info?.number;return res.status(code===2601||code===2627?409:500).json({success:false,message:code===2601||code===2627?'Email hoặc tên đã tồn tại.':'Lỗi hệ thống, hãy kiểm tra database và log máy chủ.'});};
+const hexHash=s=>crypto.createHash('sha256').update(s).digest('hex');
+module.exports={sql,bcrypt,crypto,getPool,ROLES,validEmail,validPass,validName,validPhone,safeUser,failed,hexHash};

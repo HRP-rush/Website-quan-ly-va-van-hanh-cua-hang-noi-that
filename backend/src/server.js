@@ -14,8 +14,7 @@ const PORT = Number(process.env.PORT || 5000);
 const cookieParser = require("cookie-parser");
 const { rateLimit } = require("express-rate-limit");
 const taiKhoanRoutes = require("./routes/taiKhoanRoutes");
-
-
+const mountExtendedRoutes = require('./mountExtendedRoutes');
 app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:5173",
   credentials: true
@@ -23,6 +22,7 @@ app.use(cors({
 
 app.use(express.json());
 app.use(cookieParser());
+
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.get("/", (req, res) => {
@@ -55,6 +55,8 @@ app.get("/api/health/db", async (req, res) => {
 });
 
 app.use("/api/san-pham", sanPhamRoutes);
+
+mountExtendedRoutes(app);
 
 app.listen(PORT, () => {
   console.log(
