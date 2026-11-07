@@ -615,7 +615,44 @@ async function themBienThe(req, res) {
   }
 }
 
+async function suaBienThe(req, res) {
+  const id = Number(req.params.maBienThe);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ success: false, message: "Mã biến thể không hợp lệ." });
+  const { du, loi } = docBienThe(req.body || {}, true);
+  if (loi) return res.status(400).json({ success: false, message: loi });
+
+  let tx;
+  try {
+    const pool = await getPool();
+    tx = new sql.Transaction(pool);
+    await tx.begin();
+    const up = await new sql.Request(tx)
+      .input("id", sql.Int, id)
+      .input("mau", sql.NVarChar(100), du.mauSac)
+      .input("chatLieu", sql.NVarChar(150), du.chatLieu)
+      .input("kichThuoc", sql.NVarChar(150), du.kichThuoc)
+      .input("giaBan", sql.Decimal(18, 2), du.giaBan)
+      .input("giaNhap", sql.Decimal(18, 2), du.giaNhap)
+      .input("tt", sql.NVarChar(30), du.trangThai)
+      .query(`UPDATE dbo.BienTheSanPham
+              SET MauSac = @mau, ChatLieu = @chatLieu, KichThuoc = @kichThuoc,
+                  GiaBan = @giaBan, GiaNhapThamChieu = @giaNhap, TrangThai = @tt
+              WHERE MaBienThe = @id`);
+    if (!up.rowsAffected[0]) { await tx.rollback(); return res.status(404).json({ success: false, message: "Không tìm thấy biến thể." }); }
+
+    await new sql.Request(tx).input("id", sql.Int, id).input("canhBao", sql.Int, du.mucCanhBao).query(`
+      UPDATE dbo.TonKho SET MucCanhBao = @canhBao WHERE MaBienThe = @id;
+      IF @@ROWCOUNT = 0 INSERT INTO dbo.TonKho (MaBienThe, SoLuongTon, MucCanhBao) VALUES (@id, 0, @canhBao);`);
+    await tx.commit();
+    res.json({ success: true, message: "Đã lưu biến thể." });
+  } catch (error) {
+    if (tx) { try { await tx.rollback(); } catch {} }
+    console.error("Lỗi sửa biến thể:", error.message);
+    res.status(500).json({ success: false, message: "Không thể lưu biến thể." });
+  }
+}
+
 module.exports = { layDanhSachSanPham, themSanPham, layDanhMuc,
                    layChatLieu, layDanhSachQuanTri, doiTrangThai,
                    layChiTietSanPham, layDeChinhSua, capNhatSanPham,
-                   layBienThe, themBienThe };
+                   layBienThe, themBienThe, suaBienThe };
