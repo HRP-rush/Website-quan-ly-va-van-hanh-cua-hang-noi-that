@@ -17,8 +17,6 @@ const taiKhoanRoutes = require("./routes/taiKhoanRoutes");
 
 const khoRoutes = require("./routes/khoRoutes");
 
-app.use("/api/kho", khoRoutes);
-
 app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:5173",
   credentials: true
@@ -105,3 +103,5 @@ app.use(
   "/api/v1/tai-khoan",
   taiKhoanRoutes
 );
+
+app.use("/api/kho", khoRoutes);

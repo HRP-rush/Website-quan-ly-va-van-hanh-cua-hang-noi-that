@@ -10,6 +10,7 @@ import DanhSachSanPham from "./pages/management/DanhSachSanPham";
 import ChiTietSanPham from "./pages/management/ChiTietSanPham";
 import ChinhSuaSanPham from "./pages/management/ChinhSuaSanPham";
 import BienTheSanPham from "./pages/management/BienTheSanPham";
+import QuanLyTonKho from "./pages/management/QuanLyTonKho";
 
 export default function App() {
   return <BrowserRouter>
@@ -48,6 +49,10 @@ export default function App() {
         {(user) => <BienTheSanPham user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/admin/san-pham/:maSanPham/bien-the" element={<RoleGate allow={["Admin"]}>
         {(user) => <BienTheSanPham user={user} mode="admin"/>}</RoleGate>}/>
+      <Route path="/quan-ly/kho-hang" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => <QuanLyTonKho user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/admin/kho-hang" element={<RoleGate allow={["Admin"]}>
+        {(user) => <QuanLyTonKho user={user} mode="admin"/>}</RoleGate>}/>
       <Route path="*" element={<Navigate to="/" replace/>}/>
     </Routes>
   </BrowserRouter>;
