@@ -45,7 +45,7 @@ app.get("/api/health/db", async (req, res) => {
   }
 });
 
-app.use("/api/san-pham", sanPhamRoutes);
+app.use("/api", sanPhamRoutes);
 
 app.listen(PORT, () => {
   console.log(

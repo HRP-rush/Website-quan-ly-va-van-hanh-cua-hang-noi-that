@@ -1,6 +1,13 @@
 
 const sql = require("mssql");
-require("dotenv").config();
+const fs = require("node:fs");
+const path = require("node:path");
+
+const envTrongBackend = path.resolve(__dirname, "..", "..", ".env");
+const envTrongSrc = path.resolve(__dirname, "..", ".env");
+require("dotenv").config({
+  path: fs.existsSync(envTrongBackend) ? envTrongBackend : envTrongSrc
+});
 
 const dbConfig = {
   user: process.env.DB_USER,

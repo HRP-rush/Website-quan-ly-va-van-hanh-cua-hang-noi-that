@@ -1,0 +1,14 @@
+.cart-page,
+.cart-page * {
+  min-width: 0;
+}
+
+.cart-item-image {
+  min-width: 0;
+}
+
+.quantity-control button:focus-visible,
+.remove-item:focus-visible,
+.checkout-button:focus-visible {
+  outline-offset: 3px;
+}
