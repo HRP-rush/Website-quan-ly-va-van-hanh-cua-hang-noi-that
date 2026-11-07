@@ -90,7 +90,9 @@ export default function ChiTietSanPham({ user, mode }) {
           {sp.ChatLieuChinh && <>Chất liệu chính: {sp.ChatLieuChinh}</>}
         </p>
         <div className="ctsp-actions">
-          <button type="button" className="ctsp-btn ctsp-btn-dark" disabled title="Sẽ triển khai ở màn hình tiếp theo">Quản lý biến thể</button>
+          <button type="button" className="ctsp-btn ctsp-btn-dark" onClick={() => 
+            navigate(`${base}/san-pham/${encodeURIComponent(sp.MaSanPham)}/bien-the`)}>Quản lý biến thể
+          </button>
           <button type="button" className="ctsp-btn ctsp-btn-outline" disabled title="Sẽ triển khai ở màn hình tiếp theo">Xem trên cửa hàng</button>
         </div>
       </section>

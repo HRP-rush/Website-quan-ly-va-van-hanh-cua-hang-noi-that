@@ -22,7 +22,7 @@ router.get("/quan-tri/:maSanPham/chinh-sua", ...quanTri, layDeChinhSua);
 router.put("/quan-tri/:maSanPham", ...quanTri, uploadAnhChinhSua, capNhatSanPham);
 router.get("/quan-tri/:maSanPham/bien-the", ...quanTri, layBienThe);
 router.post("/quan-tri/:maSanPham/bien-the", ...quanTri, themBienThe);
-router.put("/quan-tri/:maSanPham/bien-the/:maBienThe", ...quanTri, suaBienThe);
-router.patch("/quan-tri/:maSanPham/bien-the/:maBienThe/trang-thai", ...quanTri, doiTrangThaiBienThe);
+router.put("/quan-tri/bien-the/:maBienThe", ...quanTri, suaBienThe);
+router.patch("/quan-tri/bien-the/:maBienThe/trang-thai", ...quanTri, doiTrangThaiBienThe);
 
 module.exports = router;

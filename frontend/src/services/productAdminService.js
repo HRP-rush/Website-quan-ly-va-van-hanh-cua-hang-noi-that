@@ -73,3 +73,24 @@ export async function updateProduct(maSanPham, form, thuTuAnh, anhMoi) {
   return parse(res);
 }
 
+export async function getVariants(maSanPham) {
+  const res = await fetch(`${API_URL}/api/san-pham/quan-tri/${encodeURIComponent(maSanPham)}/bien-the`, { credentials: "include" });
+  return (await parse(res)).data; // { sanPham, bienThe: [...] }
+}
+
+const jsonInit = (method, body) => ({
+  method, credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+});
+
+export async function createVariant(maSanPham, form) {
+  const res = await fetch(`${API_URL}/api/san-pham/quan-tri/${encodeURIComponent(maSanPham)}/bien-the`, jsonInit("POST", form));
+  return parse(res);
+}
+export async function updateVariant(maBienThe, form) {
+  const res = await fetch(`${API_URL}/api/san-pham/quan-tri/bien-the/${encodeURIComponent(maBienThe)}`, jsonInit("PUT", form));
+  return parse(res);
+}
+export async function setVariantStatus(maBienThe, trangThai) {
+  const res = await fetch(`${API_URL}/api/san-pham/quan-tri/bien-the/${encodeURIComponent(maBienThe)}/trang-thai`, jsonInit("PATCH", { trangThai }));
+  return parse(res);
+}

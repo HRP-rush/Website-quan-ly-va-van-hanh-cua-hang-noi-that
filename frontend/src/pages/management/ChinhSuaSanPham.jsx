@@ -267,7 +267,11 @@ export default function ChinhSuaSanPham({ user, mode }) {
         <section className="workspace-panel" id="bien-the">
           <h2>Biến thể sản phẩm</h2>
           <p className="sp-hint">{meta.soBienThe} biến thể đã tạo. Tồn kho được theo dõi riêng theo từng SKU.</p>
-          <button type="button" className="sp-btn sp-btn-outline" disabled title="Sẽ triển khai ở màn hình tiếp theo">Quản lý biến thể</button>
+          <button type="button" className="sp-btn sp-btn-outline" onClick={() => {
+            if (daSua && !window.confirm("Bạn có thay đổi chưa lưu. Rời trang?")) return;
+            navigate(`${base}/san-pham/${encodeURIComponent(maSanPham)}/bien-the`);
+            }}>Quản lý biến thể
+          </button>
           <div><span className="cs-chip">{meta.khaDung} sản phẩm khả dụng</span></div>
         </section>
 

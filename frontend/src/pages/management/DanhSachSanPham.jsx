@@ -128,7 +128,7 @@ export default function DanhSachSanPham({ user, mode }) {
               <button type="button" onClick={() => navigate(`${base}/san-pham/${encodeURIComponent(sp.MaSanPham)}`)}>Xem</button>
               {" "}· <button type="button" onClick={() => navigate(`${base}/san-pham/${encodeURIComponent(sp.MaSanPham)}/chinh-sua`)}>Chỉnh sửa</button>
               <br/>
-              <span title={chuaXayDung}>Biến thể</span> ·{" "}
+              <button type="button" onClick={() => navigate(`${base}/san-pham/${encodeURIComponent(sp.MaSanPham)}/bien-the`)}>Biến thể</button> ·{" "}
               {sp.TrangThai === "Ngừng bán"
                 ? <button type="button" onClick={() => doiTrangThai(sp, "Đang bán")}>Kinh doanh lại</button>
                 : <button type="button" onClick={() => doiTrangThai(sp, "Ngừng bán")}>Ngừng bán</button>}
