@@ -310,8 +310,8 @@ async function xoaSanPhamKhoiGioHang(req, res) {
 }
 
 async function tienHanhThanhToan(req, res) {
-  const maNguoiDung = layMaSoHopLe(req.params.maNguoiDung);
   const duLieu = req.body || {};
+  const maNguoiDung = layMaSoHopLe(duLieu.maNguoiDung);
   const { tenNguoiNhan, soDienThoai, diaChiGiao } = duLieu;
   const phuongThuc = duLieu.phuongThuc || "COD";
   const items = duLieu.items;
@@ -501,7 +501,7 @@ async function tienHanhThanhToan(req, res) {
       const cauHinh = [dong.MauSac, dong.ChatLieu, dong.KichThuoc].filter(Boolean).join(" / ");
       const chiTietDon = await giaoDich.request()
         .input("maDon", sql.Int, maDon)
-        .input("maBienThe", sql.Int, dong.MaBienThe)
+        .input("maBienThe", sql.VarChar(80), dong.MaBienThe)
         .input("tenSanPham", sql.NVarChar(250), dong.TenSanPham)
         .input("cauHinh", sql.NVarChar(500), cauHinh || "Mặc định")
         .input("sku", sql.VarChar(80), dong.SKU)
@@ -526,7 +526,7 @@ async function tienHanhThanhToan(req, res) {
       });
 
       const capNhatKho = await giaoDich.request()
-        .input("maBienThe", sql.Int, dong.MaBienThe)
+        .input("maBienThe", sql.VarChar(80), dong.MaBienThe)
         .input("soLuong", sql.Int, dong.SoLuong)
         .query(`
           UPDATE dbo.TonKho
@@ -542,7 +542,7 @@ async function tienHanhThanhToan(req, res) {
       await giaoDich.request()
         .input("maNguoiDung", sql.Int, maNguoiDung)
         .input("maCTDon", sql.Int, maCTDon)
-        .input("maBienThe", sql.Int, dong.MaBienThe)
+        .input("maBienThe", sql.VarChar(80), dong.MaBienThe)
         .input("soLuongThayDoi", sql.Int, -dong.SoLuong)
         .query(`
           INSERT INTO dbo.GiaoDichKho

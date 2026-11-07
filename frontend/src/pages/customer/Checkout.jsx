@@ -31,11 +31,12 @@ async function checkStockAvailability(items) {
 
 async function submitOrder({ maNguoiDung, items, recipient, address, paymentMethod }) {
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/don-hang/tao-moi/${encodeURIComponent(maNguoiDung)}`,
+    `${API_BASE_URL}/api/v1/don-hang/tao-moi`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        maNguoiDung,
         items: items.map((item) => ({
           sku: item.sku,
           quantity: item.quantity,
@@ -65,6 +66,8 @@ function Checkout({
   shipping,
   onBack,
   maNguoiDung,
+  onViewOrder,
+  onOrderCreated,
 }) {
   const [step, setStep] = useState(1);
   const [recipient, setRecipient] = useState(null);
@@ -195,7 +198,7 @@ function Checkout({
       });
       const createdAt = new Date(data.ngayDat);
       const imageBySku = new Map(items.map((item) => [item.sku, item]));
-      setConfirmedOrder({
+      const confirmedOrderData = {
         number: `MA-${data.maDon}`,
         createdAt: Number.isNaN(createdAt.getTime()) ? new Date() : createdAt,
         items: data.chiTiet.map((item) => ({
@@ -206,7 +209,14 @@ function Checkout({
         tienHang: data.tienHang,
         phiGiaoHang: data.phiGiaoHang,
         tongThanhToan: data.tongThanhToan,
-      });
+        recipient,
+        address: [recipient.address, wardName, provinceName].filter(Boolean).join(", "),
+        paymentMethod,
+        paymentMethodName,
+        status: "Chờ xác nhận",
+      };
+      setConfirmedOrder(confirmedOrderData);
+      onOrderCreated();
     } catch (error) {
       if (error.status === 409 && error.data?.sanPhamKhongDuHang?.length) {
         setFailedOrder({ items: error.data.sanPhamKhongDuHang });
@@ -426,9 +436,13 @@ function Checkout({
           </ol>
 
           <div className="order-success-actions">
-            <a className="checkout-continue" href="#success-order-details">
+            <button
+              className="checkout-continue"
+              onClick={() => onViewOrder(confirmedOrder)}
+              type="button"
+            >
               Xem đơn hàng
-            </a>
+            </button>
             <a
               className="order-success-continue"
               href="#products"

@@ -5,6 +5,7 @@ import Header from "../../components/Header.jsx";
 import Icon from "../../components/Icons.jsx";
 import OrderSummary from "../../components/OrderSummary.jsx";
 import Checkout from "./Checkout.jsx";
+import OrderDetails from "./OrderDetails.jsx";
 import "../../styles/cart.css";
 
 const initialItems = [
@@ -37,6 +38,7 @@ const initialItems = [
 function Cart({ maNguoiDung }) {
   const [items, setItems] = useState(initialItems);
   const [isCheckout, setIsCheckout] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   const subtotal = useMemo(
     () => items.reduce((total, item) => total + item.price * item.quantity, 0),
@@ -63,14 +65,24 @@ function Cart({ maNguoiDung }) {
 
   return (
     <div className="storefront">
-      <Header itemCount={itemCount} variant={isCheckout ? "checkout" : "store"} />
-      {isCheckout ? (
+      <Header
+        itemCount={itemCount}
+        variant={isCheckout && !selectedOrder ? "checkout" : "store"}
+      />
+      {selectedOrder ? (
+        <OrderDetails
+          order={selectedOrder}
+          onBack={() => setSelectedOrder(null)}
+        />
+      ) : isCheckout ? (
         <Checkout
           items={items}
           subtotal={subtotal}
           shipping={items.length ? 300_000 : 0}
           onBack={() => setIsCheckout(false)}
           maNguoiDung={maNguoiDung}
+          onViewOrder={setSelectedOrder}
+          onOrderCreated={() => setItems([])}
         />
       ) : (
         <main className="cart-page" id="cart">
@@ -130,7 +142,7 @@ function Cart({ maNguoiDung }) {
           )}
         </main>
       )}
-      <Footer variant={isCheckout ? "checkout" : "store"} />
+      <Footer variant={isCheckout && !selectedOrder ? "checkout" : "store"} />
     </div>
   );
 }
