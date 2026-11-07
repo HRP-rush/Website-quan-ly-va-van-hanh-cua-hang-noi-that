@@ -12,7 +12,8 @@ function Checkout({ items, subtotal, shipping, onBack }) {
   const [step, setStep] = useState(1);
   const [recipient, setRecipient] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("COD");
-  const [paymentNotice, setPaymentNotice] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [confirmationNotice, setConfirmationNotice] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [couponNotice, setCouponNotice] = useState("");
   const [provinces, setProvinces] = useState([]);
@@ -30,6 +31,11 @@ function Checkout({ items, subtotal, shipping, onBack }) {
   const wardName = wards.find(
     (ward) => String(ward.code) === selectedWard,
   )?.name;
+  const paymentMethodName = {
+    COD: "Thanh toán khi nhận hàng (COD)",
+    BANK_TRANSFER: "Chuyển khoản ngân hàng",
+    ONLINE: "Thanh toán trực tuyến",
+  }[paymentMethod];
 
   useEffect(() => {
     const controller = new AbortController();
@@ -100,13 +106,17 @@ function Checkout({ items, subtotal, shipping, onBack }) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     setRecipient(Object.fromEntries(formData.entries()));
-    setPaymentNotice("");
     setStep(2);
   }
 
   function handlePaymentContinue() {
-    setPaymentNotice(
-      "Phương thức đã chọn. Chức năng xác nhận đơn hàng và xử lý thanh toán chưa được kết nối.",
+    setConfirmationNotice("");
+    setStep(3);
+  }
+
+  function handleConfirmOrder() {
+    setConfirmationNotice(
+      "Giao diện xác nhận đã sẵn sàng, nhưng chức năng tạo đơn hàng chưa được kết nối. Đơn hàng chưa được đặt.",
     );
   }
 
@@ -142,7 +152,9 @@ function Checkout({ items, subtotal, shipping, onBack }) {
         <p>
           {step === 1
             ? "Chia sẻ địa chỉ để Mộc An chuẩn bị hành trình đến nhà bạn."
-            : "Lựa chọn phương thức thanh toán phù hợp với bạn."}
+            : step === 2
+              ? "Lựa chọn phương thức thanh toán phù hợp với bạn."
+              : "Kiểm tra thông tin lần cuối trước khi gửi đơn hàng đến Mộc An."}
         </p>
       </div>
 
@@ -158,13 +170,16 @@ function Checkout({ items, subtotal, shipping, onBack }) {
             <span>Thông tin giao hàng</span>
           )}
         </li>
-        <li className={step === 2 ? "is-current" : ""} aria-current={step === 2 ? "step" : undefined}>
-          <span>2</span>
+        <li
+          className={step > 2 ? "is-complete" : step === 2 ? "is-current" : ""}
+          aria-current={step === 2 ? "step" : undefined}
+        >
+          <span>{step > 2 ? "✓" : "2"}</span>
           {step === 2 ? <strong>Thanh toán</strong> : <span>Thanh toán</span>}
         </li>
-        <li>
+        <li className={step === 3 ? "is-current" : ""} aria-current={step === 3 ? "step" : undefined}>
           <span>3</span>
-          <span>Xác nhận đơn hàng</span>
+          {step === 3 ? <strong>Xác nhận đơn hàng</strong> : <span>Xác nhận đơn hàng</span>}
         </li>
       </ol>
 
@@ -177,27 +192,35 @@ function Checkout({ items, subtotal, shipping, onBack }) {
               <span>* Thông tin bắt buộc</span>
             </div>
             <div className="checkout-field">
-              <label htmlFor="recipient-name">Họ và tên *</label>
+              <label htmlFor="recipient-name">Họ Và Tên *</label>
               <input
                 autoComplete="name"
                 id="recipient-name"
                 name="recipientName"
-                placeholder="Nguyễn Minh Anh"
+                placeholder="Họ Và Tên"
                 defaultValue={recipient?.recipientName ?? ""}
                 required
               />
             </div>
             <div className="checkout-fields-row">
               <div className="checkout-field">
-                <label htmlFor="recipient-phone">Số điện thoại *</label>
+                <label htmlFor="recipient-phone">Số Điện Thoại *</label>
                 <input
                   autoComplete="tel"
                   id="recipient-phone"
                   name="phone"
-                  placeholder="090 123 4567"
+                  placeholder="Số Điện Thoại"
                   defaultValue={recipient?.phone ?? ""}
+                  inputMode="numeric"
+                  onChange={(event) => {
+                    event.target.value = event.target.value
+                      .replace(/\D/g, "")
+                      .slice(0, 10);
+                  }}
+                  pattern="0(3[2-9]|5[25689]|7[06789]|8[1-9]|9[0-9])[0-9]{7}"
                   required
                   type="tel"
+                  title="Nhập số di động Việt Nam 10 chữ số với đầu số được cấp: 032–039, 052, 055, 056, 058, 059, 070, 076–079, 081–089 hoặc 090–099."
                 />
               </div>
               <div className="checkout-field">
@@ -206,7 +229,7 @@ function Checkout({ items, subtotal, shipping, onBack }) {
                   autoComplete="email"
                   id="recipient-email"
                   name="email"
-                  placeholder="minh.anh@example.com"
+                  placeholder="Email"
                   defaultValue={recipient?.email ?? ""}
                   required
                   type="email"
@@ -342,7 +365,7 @@ function Checkout({ items, subtotal, shipping, onBack }) {
             </button>
           </div>
         </form>
-        ) : (
+        ) : step === 2 ? (
           <section className="checkout-form checkout-payment-step">
             <div className="checkout-recipient-card">
               <div>
@@ -457,9 +480,122 @@ function Checkout({ items, subtotal, shipping, onBack }) {
                 Kiểm tra đơn hàng <span aria-hidden="true">→</span>
               </button>
             </div>
-            {paymentNotice && (
+          </section>
+        ) : (
+          <section className="checkout-form checkout-confirmation">
+            <section className="confirmation-section">
+              <div className="confirmation-section-heading">
+                <h2>Thông tin giao hàng</h2>
+                <button
+                  className="checkout-edit-recipient"
+                  onClick={() => setStep(1)}
+                  type="button"
+                >
+                  Chỉnh sửa
+                </button>
+              </div>
+              <strong className="confirmation-recipient-name">
+                {recipient?.recipientName} · {recipient?.phone}
+              </strong>
+              {recipient?.email && (
+                <p className="confirmation-email">{recipient.email}</p>
+              )}
+              <p className="confirmation-address">
+                {recipient?.address}, {wardName}, {provinceName}
+              </p>
+              {recipient?.deliveryNote && (
+                <p className="confirmation-delivery-note">
+                  Ghi chú: {recipient.deliveryNote}
+                </p>
+              )}
+            </section>
+
+            <section className="confirmation-section">
+              <h2>Sản phẩm trong đơn ({itemCount})</h2>
+              <div className="confirmation-products">
+                {items.map((item) => (
+                  <article className="confirmation-product" key={item.id}>
+                    <img src={item.image} alt={item.imageAlt} />
+                    <div>
+                      <h3>{item.name}</h3>
+                      <p>{item.material} / {item.dimensions}</p>
+                      <small>SKU: {item.sku}</small>
+                      <strong>
+                        {formatCurrency(item.price)} × {item.quantity}
+                      </strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <p className="confirmation-stock-note">
+                Tồn kho, phân loại và số lượng sẽ được kiểm tra lại trước khi
+                xác nhận đặt hàng.
+              </p>
+            </section>
+
+            <section className="confirmation-section confirmation-payment">
+              <div className="confirmation-section-heading">
+                <h2>{paymentMethodName}</h2>
+                <button
+                  className="checkout-edit-recipient"
+                  onClick={() => setStep(2)}
+                  type="button"
+                >
+                  Chỉnh sửa
+                </button>
+              </div>
+              <p>
+                {paymentMethod === "COD"
+                  ? `Thanh toán ${formatCurrency(subtotal + shipping)} khi nhận sản phẩm.`
+                  : "Phương thức này đang ở chế độ mô phỏng; chưa phát sinh giao dịch."}
+              </p>
+            </section>
+
+            <p className="confirmation-stock-warning">
+              <Icon name="info" size={16} />
+              <span>
+                Tồn kho từng SKU phải được kiểm tra lại trước khi đặt. Nếu
+                không đủ hàng, đơn sẽ không được tạo và bạn cần điều chỉnh giỏ
+                hàng.
+              </span>
+            </p>
+
+            <label className="confirmation-terms">
+              <input
+                checked={acceptedTerms}
+                onChange={(event) => {
+                  setAcceptedTerms(event.target.checked);
+                  setConfirmationNotice("");
+                }}
+                type="checkbox"
+              />
+              <span>
+                Tôi đã đọc và đồng ý với Điều khoản mua hàng, Chính sách giao
+                hàng và Chính sách bảo mật của MỘC AN INTERIOR.
+              </span>
+            </label>
+
+            <div className="checkout-actions">
+              <button
+                className="checkout-back"
+                onClick={() => setStep(2)}
+                type="button"
+              >
+                <Icon name="arrowLeft" size={15} />
+                Phương thức thanh toán
+              </button>
+              <button
+                className="checkout-continue"
+                disabled={!acceptedTerms}
+                onClick={handleConfirmOrder}
+                type="button"
+              >
+                Xác nhận đặt hàng
+              </button>
+            </div>
+            {confirmationNotice && (
               <p className="checkout-form-status" role="status">
-                {paymentNotice}
+                {confirmationNotice}
               </p>
             )}
           </section>
@@ -502,6 +638,16 @@ function Checkout({ items, subtotal, shipping, onBack }) {
             <Icon name="shield" size={15} />
             Bảo mật thông tin · Hỗ trợ 1900 6868
           </p>
+          {step === 3 && (
+            <section className="after-order">
+              <h2>Sau khi đặt hàng</h2>
+              <ol>
+                <li>Nhận mã đơn và email xác nhận.</li>
+                <li>Mộc An liên hệ xác nhận thông tin.</li>
+                <li>Chuẩn bị, giao hàng và lắp đặt.</li>
+              </ol>
+            </section>
+          )}
         </aside>
       </div>
     </main>
