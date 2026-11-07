@@ -29,11 +29,42 @@ async function checkStockAvailability(items) {
   return result;
 }
 
+async function submitOrder({ maNguoiDung, items, recipient, address, paymentMethod }) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/don-hang/tao-moi/${encodeURIComponent(maNguoiDung)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: items.map((item) => ({
+          sku: item.sku,
+          quantity: item.quantity,
+        })),
+        tenNguoiNhan: recipient.recipientName,
+        soDienThoai: recipient.phone,
+        diaChiGiao: address,
+        phuongThuc: paymentMethod,
+      }),
+    },
+  );
+  const result = await response.json();
+
+  if (!response.ok || !result.success) {
+    const error = new Error(result.message || "Không thể tạo đơn hàng. Vui lòng thử lại.");
+    error.status = response.status;
+    error.data = result;
+    throw error;
+  }
+
+  return result.data;
+}
+
 function Checkout({
   items,
   subtotal,
   shipping,
   onBack,
+  maNguoiDung,
 }) {
   const [step, setStep] = useState(1);
   const [recipient, setRecipient] = useState(null);
@@ -42,7 +73,7 @@ function Checkout({
   const [confirmationNotice, setConfirmationNotice] = useState("");
   const [confirmedOrder, setConfirmedOrder] = useState(null);
   const [failedOrder, setFailedOrder] = useState(null);
-  const [isCheckingOrderStock, setIsCheckingOrderStock] = useState(false);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [couponNotice, setCouponNotice] = useState("");
   const [provinces, setProvinces] = useState([]);
@@ -145,35 +176,53 @@ function Checkout({
 
   async function handleConfirmOrder() {
     setConfirmationNotice("");
-    setIsCheckingOrderStock(true);
+    if (!Number.isSafeInteger(Number(maNguoiDung)) || Number(maNguoiDung) < 1) {
+      setConfirmationNotice(
+        "Chưa xác định được mã người dùng. Đơn hàng chưa được tạo; vui lòng đăng nhập hoặc cung cấp mã người dùng hợp lệ.",
+      );
+      return;
+    }
+
+    setIsProcessingOrder(true);
     try {
-      const result = await checkStockAvailability(items);
-      if (!result.duHang) {
-        setFailedOrder({ items: result.sanPhamKhongDuHang });
-        return;
-      }
-
-      const now = new Date();
-      const dateCode = now.toISOString().slice(0, 10).replaceAll("-", "");
-      const orderCode = String(Date.now()).slice(-6);
-
       setFailedOrder(null);
+      const data = await submitOrder({
+        maNguoiDung: Number(maNguoiDung),
+        items,
+        recipient,
+        address: [recipient.address, wardName, provinceName].filter(Boolean).join(", "),
+        paymentMethod,
+      });
+      const createdAt = new Date(data.ngayDat);
+      const imageBySku = new Map(items.map((item) => [item.sku, item]));
       setConfirmedOrder({
-        number: `MA-${dateCode}-${orderCode}`,
-        createdAt: now,
+        number: `MA-${data.maDon}`,
+        createdAt: Number.isNaN(createdAt.getTime()) ? new Date() : createdAt,
+        items: data.chiTiet.map((item) => ({
+          ...item,
+          image: imageBySku.get(item.sku)?.image ?? "",
+          imageAlt: imageBySku.get(item.sku)?.imageAlt ?? item.tenSanPham,
+        })),
+        tienHang: data.tienHang,
+        phiGiaoHang: data.phiGiaoHang,
+        tongThanhToan: data.tongThanhToan,
       });
     } catch (error) {
-      console.error("Lỗi kiểm tra tồn kho khi xác nhận đơn:", error);
+      if (error.status === 409 && error.data?.sanPhamKhongDuHang?.length) {
+        setFailedOrder({ items: error.data.sanPhamKhongDuHang });
+        return;
+      }
+      console.error("Lỗi tạo đơn hàng:", error);
       setConfirmationNotice(
-        error.message || "Không thể kiểm tra tồn kho. Vui lòng thử lại.",
+        error.message || "Không thể tạo đơn hàng. Vui lòng thử lại.",
       );
     } finally {
-      setIsCheckingOrderStock(false);
+      setIsProcessingOrder(false);
     }
   }
 
   async function handleRetryStockCheck() {
-    setIsCheckingOrderStock(true);
+    setIsProcessingOrder(true);
     try {
       const result = await checkStockAvailability(items);
       if (!result.duHang) {
@@ -191,7 +240,7 @@ function Checkout({
           error.message || "Không thể kiểm tra tồn kho. Vui lòng thử lại.",
       }));
     } finally {
-      setIsCheckingOrderStock(false);
+      setIsProcessingOrder(false);
     }
   }
 
@@ -244,11 +293,11 @@ function Checkout({
           <div className="order-success-actions">
             <button
               className="checkout-continue"
-              disabled={isCheckingOrderStock}
+              disabled={isProcessingOrder}
               onClick={handleRetryStockCheck}
               type="button"
             >
-              {isCheckingOrderStock ? "Đang kiểm tra..." : "Thử lại"}
+              {isProcessingOrder ? "Đang kiểm tra..." : "Thử lại"}
             </button>
             <button
               className="order-success-continue"
@@ -270,8 +319,8 @@ function Checkout({
             Cảm ơn bạn đã lựa chọn MỘC AN INTERIOR.
           </p>
           <p className="order-success-intro">
-            Thông tin đơn hàng đã được ghi nhận trong phiên này. Mộc An sẽ liên
-            hệ để xác nhận và sắp xếp lịch giao phù hợp với bạn.
+            Đơn hàng đã được lưu thành công vào hệ thống. Mộc An sẽ liên hệ để
+            xác nhận và sắp xếp lịch giao phù hợp với bạn.
           </p>
           <section className="order-success-card" id="success-order-details">
             <div className="order-success-card-heading">
@@ -288,14 +337,14 @@ function Checkout({
             <div className="order-success-card-content">
               <section className="order-success-products">
                 <h2>Những lựa chọn của bạn</h2>
-                {items.map((item) => (
-                  <article className="order-success-product" key={item.id}>
+                {confirmedOrder.items.map((item) => (
+                  <article className="order-success-product" key={item.sku}>
                     <img src={item.image} alt={item.imageAlt} />
                     <div>
-                      <h3>{item.name}</h3>
-                      <p>{item.material} / {item.dimensions}</p>
+                      <h3>{item.tenSanPham}</h3>
+                      <p>{item.cauHinh} · SKU: {item.sku}</p>
                       <strong>
-                        {formatCurrency(item.price)} × {item.quantity}
+                        {formatCurrency(item.giaBan)} × {item.soLuong}
                       </strong>
                     </div>
                   </article>
@@ -317,12 +366,17 @@ function Checkout({
 
               <section className="order-success-payment">
                 <div className="checkout-summary-row">
-                  <span>Tạm tính ({itemCount} sản phẩm)</span>
-                  <span>{formatCurrency(subtotal)}</span>
+                  <span>
+                    Tạm tính ({confirmedOrder.items.reduce(
+                      (total, item) => total + item.soLuong,
+                      0,
+                    )} sản phẩm)
+                  </span>
+                  <span>{formatCurrency(confirmedOrder.tienHang)}</span>
                 </div>
                 <div className="checkout-summary-row">
                   <span>Phí giao hàng &amp; lắp đặt</span>
-                  <span>{formatCurrency(shipping)}</span>
+                  <span>{formatCurrency(confirmedOrder.phiGiaoHang)}</span>
                 </div>
                 <div className="checkout-summary-row">
                   <span>Giảm giá</span>
@@ -330,7 +384,7 @@ function Checkout({
                 </div>
                 <div className="checkout-summary-total">
                   <span>Tổng thanh toán</span>
-                  <strong>{formatCurrency(subtotal + shipping)}</strong>
+                  <strong>{formatCurrency(confirmedOrder.tongThanhToan)}</strong>
                 </div>
                 <p className="checkout-tax-note">
                   Đã bao gồm VAT. Không phát sinh chi phí khi nhận hàng.
@@ -843,12 +897,12 @@ function Checkout({
               </button>
               <button
                 className="checkout-continue"
-                disabled={!acceptedTerms || isCheckingOrderStock}
+                disabled={!acceptedTerms || isProcessingOrder}
                 onClick={handleConfirmOrder}
                 type="button"
               >
-                {isCheckingOrderStock
-                  ? "Đang kiểm tra tồn kho..."
+                {isProcessingOrder
+                  ? "Đang tạo đơn hàng..."
                   : "Xác nhận đặt hàng"}
               </button>
             </div>

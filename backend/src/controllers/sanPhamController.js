@@ -314,6 +314,7 @@ async function tienHanhThanhToan(req, res) {
   const duLieu = req.body || {};
   const { tenNguoiNhan, soDienThoai, diaChiGiao } = duLieu;
   const phuongThuc = duLieu.phuongThuc || "COD";
+  const items = duLieu.items;
 
   if (!maNguoiDung) {
     return res.status(400).json({ success: false, message: "Mã người dùng không hợp lệ" });
@@ -322,15 +323,42 @@ async function tienHanhThanhToan(req, res) {
     typeof tenNguoiNhan !== "string" || !tenNguoiNhan.trim() ||
     typeof soDienThoai !== "string" || !soDienThoai.trim() ||
     typeof diaChiGiao !== "string" || !diaChiGiao.trim() ||
-    typeof phuongThuc !== "string" || !phuongThuc.trim() ||
     tenNguoiNhan.trim().length > 150 ||
     soDienThoai.trim().length > 20 ||
-    diaChiGiao.trim().length > 500 ||
-    phuongThuc.trim().length > 50
+    !/^0(3[2-9]|5[25689]|7[06789]|8[1-9]|9[0-9])[0-9]{7}$/.test(soDienThoai.trim()) ||
+    diaChiGiao.trim().length > 500
   ) {
     return res.status(400).json({
       success: false,
-      message: "Vui lòng cung cấp tên người nhận, số điện thoại, địa chỉ giao hàng và phương thức thanh toán"
+      message: "Thông tin người nhận, số điện thoại hoặc địa chỉ giao hàng không hợp lệ"
+    });
+  }
+  if (!["COD", "BANK_TRANSFER", "ONLINE"].includes(phuongThuc)) {
+    return res.status(400).json({
+      success: false,
+      message: "Phương thức thanh toán không hợp lệ"
+    });
+  }
+  if (
+    items !== undefined &&
+    (
+      !Array.isArray(items) ||
+      items.length === 0 ||
+      items.length > 100 ||
+      items.some((item) =>
+        !item ||
+        typeof item.sku !== "string" ||
+        !item.sku.trim() ||
+        item.sku.trim().length > 80 ||
+        !Number.isSafeInteger(item.quantity) ||
+        item.quantity < 1
+      ) ||
+      new Set(items.map((item) => item?.sku?.trim())).size !== items.length
+    )
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Danh sách sản phẩm đặt hàng không hợp lệ"
     });
   }
 
@@ -341,37 +369,88 @@ async function tienHanhThanhToan(req, res) {
     giaoDich = new sql.Transaction(pool);
     await giaoDich.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
 
-    const gioHang = await taoYeuCau(giaoDich, maNguoiDung).query(`
-      SELECT
-        ct.MaCTGio,
-        ct.MaBienThe,
-        ct.SoLuong,
-        sp.TenSanPham,
-        sp.TrangThai AS TrangThaiSanPham,
-        bt.SKU,
-        bt.MauSac,
-        bt.ChatLieu,
-        bt.KichThuoc,
-        bt.GiaBan,
-        bt.TrangThai AS TrangThaiBienThe,
-        ISNULL(tk.SoLuongTon, 0) AS SoLuongTon
-      FROM dbo.GioHang AS gh
-      INNER JOIN dbo.CTGioHang AS ct WITH (UPDLOCK, HOLDLOCK) ON ct.MaGio = gh.MaGio
-      INNER JOIN dbo.BienTheSanPham AS bt ON bt.MaBienThe = ct.MaBienThe
-      INNER JOIN dbo.SanPham AS sp ON sp.MaSanPham = bt.MaSanPham
-      LEFT JOIN dbo.TonKho AS tk WITH (UPDLOCK, HOLDLOCK) ON tk.MaBienThe = bt.MaBienThe
-      WHERE gh.MaNguoiDung = @maNguoiDung
-      ORDER BY ct.MaBienThe
+    const nguoiDung = await taoYeuCau(giaoDich, maNguoiDung).query(`
+      SELECT MaNguoiDung
+      FROM dbo.NguoiDung WITH (UPDLOCK, HOLDLOCK)
+      WHERE MaNguoiDung = @maNguoiDung
     `);
+    if (!nguoiDung.recordset.length) {
+      await giaoDich.rollback();
+      daKetThucGiaoDich = true;
+      return res.status(404).json({ success: false, message: "Không tìm thấy người dùng" });
+    }
 
-    if (!gioHang.recordset.length) {
+    let cacMatHang;
+    if (items === undefined) {
+      const gioHang = await taoYeuCau(giaoDich, maNguoiDung).query(`
+        SELECT
+          ct.MaBienThe,
+          ct.SoLuong,
+          sp.TenSanPham,
+          sp.TrangThai AS TrangThaiSanPham,
+          bt.SKU,
+          bt.MauSac,
+          bt.ChatLieu,
+          bt.KichThuoc,
+          bt.GiaBan,
+          bt.TrangThai AS TrangThaiBienThe,
+          ISNULL(tk.SoLuongTon, 0) AS SoLuongTon
+        FROM dbo.GioHang AS gh
+        INNER JOIN dbo.CTGioHang AS ct WITH (UPDLOCK, HOLDLOCK) ON ct.MaGio = gh.MaGio
+        INNER JOIN dbo.BienTheSanPham AS bt ON bt.MaBienThe = ct.MaBienThe
+        INNER JOIN dbo.SanPham AS sp ON sp.MaSanPham = bt.MaSanPham
+        LEFT JOIN dbo.TonKho AS tk WITH (UPDLOCK, HOLDLOCK) ON tk.MaBienThe = bt.MaBienThe
+        WHERE gh.MaNguoiDung = @maNguoiDung
+        ORDER BY ct.MaBienThe
+      `);
+      cacMatHang = gioHang.recordset;
+    } else {
+      const request = giaoDich.request();
+      const placeholders = items.map((item, index) => {
+        const parameter = `sku${index}`;
+        request.input(parameter, sql.VarChar(80), item.sku.trim());
+        return `@${parameter}`;
+      });
+      const sanPham = await request.query(`
+        SELECT
+          bt.MaBienThe,
+          sp.TenSanPham,
+          sp.TrangThai AS TrangThaiSanPham,
+          bt.SKU,
+          bt.MauSac,
+          bt.ChatLieu,
+          bt.KichThuoc,
+          bt.GiaBan,
+          bt.TrangThai AS TrangThaiBienThe,
+          ISNULL(tk.SoLuongTon, 0) AS SoLuongTon
+        FROM dbo.BienTheSanPham AS bt WITH (UPDLOCK, HOLDLOCK)
+        INNER JOIN dbo.SanPham AS sp ON sp.MaSanPham = bt.MaSanPham
+        LEFT JOIN dbo.TonKho AS tk WITH (UPDLOCK, HOLDLOCK) ON tk.MaBienThe = bt.MaBienThe
+        WHERE bt.SKU IN (${placeholders.join(", ")})
+      `);
+      const theoSKU = new Map(sanPham.recordset.map((dong) => [dong.SKU, dong]));
+      cacMatHang = items.map((item) => {
+        const dong = theoSKU.get(item.sku.trim());
+        return dong ? { ...dong, SoLuong: item.quantity } : {
+          SKU: item.sku.trim(),
+          TenSanPham: item.sku.trim(),
+          SoLuong: item.quantity,
+          SoLuongTon: 0,
+          TrangThaiSanPham: null,
+          TrangThaiBienThe: null
+        };
+      });
+    }
+
+    if (!cacMatHang.length) {
       await giaoDich.rollback();
       daKetThucGiaoDich = true;
       return res.status(400).json({ success: false, message: "Giỏ hàng đang trống" });
     }
 
-    const sanPhamKhongDuHang = gioHang.recordset
+    const sanPhamKhongDuHang = cacMatHang
       .filter((dong) =>
+        !dong.MaBienThe ||
         dong.SoLuongTon < dong.SoLuong ||
         dong.TrangThaiSanPham !== "Đang bán" ||
         dong.TrangThaiBienThe !== "Đang bán"
@@ -396,7 +475,7 @@ async function tienHanhThanhToan(req, res) {
       });
     }
 
-    const tienHang = gioHang.recordset.reduce(
+    const tienHang = cacMatHang.reduce(
       (tong, dong) => tong + Number(dong.GiaBan) * dong.SoLuong,
       0
     );
@@ -411,13 +490,14 @@ async function tienHanhThanhToan(req, res) {
       .query(`
         INSERT INTO dbo.DonHang
           (MaNguoiDung, TrangThai, TenNguoiNhan, SDTNhan, DiaChiGiao, TienHang, PhiGiao, GiamGia, TongThanhToan)
-        OUTPUT INSERTED.MaDon
+        OUTPUT INSERTED.MaDon, INSERTED.NgayDat
         VALUES
           (@maNguoiDung, N'Chờ xác nhận', @tenNguoiNhan, @soDienThoai, @diaChiGiao, @tienHang, @phiGiao, 0, @tongThanhToan)
       `);
     const maDon = donHang.recordset[0].MaDon;
 
-    for (const dong of gioHang.recordset) {
+    const chiTietSnapshot = [];
+    for (const dong of cacMatHang) {
       const cauHinh = [dong.MauSac, dong.ChatLieu, dong.KichThuoc].filter(Boolean).join(" / ");
       const chiTietDon = await giaoDich.request()
         .input("maDon", sql.Int, maDon)
@@ -436,6 +516,14 @@ async function tienHanhThanhToan(req, res) {
             (@maDon, @maBienThe, @tenSanPham, @cauHinh, @sku, @giaBan, @soLuong, @thanhTien)
         `);
       const maCTDon = chiTietDon.recordset[0].MaCTDon;
+      chiTietSnapshot.push({
+        tenSanPham: dong.TenSanPham,
+        cauHinh: cauHinh || "Mặc định",
+        sku: dong.SKU,
+        giaBan: Number(dong.GiaBan),
+        soLuong: dong.SoLuong,
+        thanhTien: Number(dong.GiaBan) * dong.SoLuong
+      });
 
       const capNhatKho = await giaoDich.request()
         .input("maBienThe", sql.Int, dong.MaBienThe)
@@ -473,19 +561,28 @@ async function tienHanhThanhToan(req, res) {
         VALUES (@maDon, @phuongThuc, @tongThanhToan, N'Chờ thanh toán')
       `);
 
-    await taoYeuCau(giaoDich, maNguoiDung).query(`
-      DELETE ct
-      FROM dbo.CTGioHang AS ct
-      INNER JOIN dbo.GioHang AS gh ON gh.MaGio = ct.MaGio
-      WHERE gh.MaNguoiDung = @maNguoiDung
-    `);
+    if (items === undefined) {
+      await taoYeuCau(giaoDich, maNguoiDung).query(`
+        DELETE ct
+        FROM dbo.CTGioHang AS ct
+        INNER JOIN dbo.GioHang AS gh ON gh.MaGio = ct.MaGio
+        WHERE gh.MaNguoiDung = @maNguoiDung
+      `);
+    }
 
     await giaoDich.commit();
     daKetThucGiaoDich = true;
     return res.status(201).json({
       success: true,
       message: "Đã tạo đơn hàng. Đơn đang chờ thanh toán.",
-      data: { maDon, tienHang, phiGiaoHang: PHI_GIAO_HANG, tongThanhToan }
+      data: {
+        maDon,
+        ngayDat: donHang.recordset[0].NgayDat,
+        tienHang,
+        phiGiaoHang: PHI_GIAO_HANG,
+        tongThanhToan,
+        chiTiet: chiTietSnapshot
+      }
     });
   } catch (error) {
     if (giaoDich && !daKetThucGiaoDich) {

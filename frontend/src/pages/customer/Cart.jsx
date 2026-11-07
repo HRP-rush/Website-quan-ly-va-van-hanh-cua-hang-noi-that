@@ -34,7 +34,7 @@ const initialItems = [
   },
 ];
 
-function Cart() {
+function Cart({ maNguoiDung }) {
   const [items, setItems] = useState(initialItems);
   const [isCheckout, setIsCheckout] = useState(false);
 
@@ -70,6 +70,7 @@ function Cart() {
           subtotal={subtotal}
           shipping={items.length ? 300_000 : 0}
           onBack={() => setIsCheckout(false)}
+          maNguoiDung={maNguoiDung}
         />
       ) : (
         <main className="cart-page" id="cart">
