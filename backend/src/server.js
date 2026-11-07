@@ -24,7 +24,7 @@ app.get("/", (req, res) => {
 });
 
 // API kiểm tra kết nối SQL Server
-app.get("/api/health/db", async (req, res) => {
+app.get("/api/v1/health/db", async (req, res) => {
   try {
     const pool = await getPool();
 
@@ -46,8 +46,8 @@ app.get("/api/health/db", async (req, res) => {
   }
 });
 
-app.use("/api", sanPhamRoutes);
-app.use("/api/dia-chi", diaChiRoutes);
+app.use("/api/v1", sanPhamRoutes);
+app.use("/api/v1/dia-chi", diaChiRoutes);
 
 app.listen(PORT, () => {
   console.log(

@@ -9,7 +9,7 @@ function formatCurrency(value) {
 }
 
 async function checkStockAvailability(items) {
-  const response = await fetch(`${API_BASE_URL}/api/kho/kiem-tra-ton-kho`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/gio-hang/kiem-tra-ton-kho`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -73,7 +73,7 @@ function Checkout({
       setIsLoadingProvinces(true);
       setLocationError("");
       try {
-        const response = await fetch(`${API_BASE_URL}/api/dia-chi/tinh-thanh`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/dia-chi/tinh-thanh`, {
           signal: controller.signal,
         });
         const result = await response.json();
@@ -107,7 +107,7 @@ function Checkout({
     async function loadWards() {
       try {
         const response = await fetch(
-          `${API_BASE_URL}/api/dia-chi/tinh-thanh/${selectedProvince}/phuong-xa`,
+          `${API_BASE_URL}/api/v1/dia-chi/tinh-thanh/${selectedProvince}/phuong-xa`,
           { signal: controller.signal },
         );
         const result = await response.json();

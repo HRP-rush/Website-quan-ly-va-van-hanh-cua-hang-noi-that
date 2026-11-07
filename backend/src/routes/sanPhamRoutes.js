@@ -12,11 +12,11 @@ const {
 
 const router = express.Router();
 
-router.get("/san-pham", layDanhSachSanPham);
-router.post("/kho/kiem-tra-ton-kho", kiemTraTonKho);
+router.get("/san-pham/danh-sach", layDanhSachSanPham);
+router.post("/gio-hang/kiem-tra-ton-kho", kiemTraTonKho);
 router.get("/gio-hang/:maNguoiDung", layGioHang);
-router.post("/gio-hang/:maNguoiDung/san-pham/:maCTGio/tang", tangSoLuongTrongGio);
-router.delete("/gio-hang/:maNguoiDung/san-pham/:maCTGio", xoaSanPhamKhoiGioHang);
-router.post("/gio-hang/:maNguoiDung/thanh-toan", tienHanhThanhToan);
+router.post("/gio-hang/:maNguoiDung/tang-so-luong/:maCTGio", tangSoLuongTrongGio);
+router.delete("/gio-hang/:maNguoiDung/xoa-san-pham/:maCTGio", xoaSanPhamKhoiGioHang);
+router.post("/don-hang/tao-moi/:maNguoiDung", tienHanhThanhToan);
 
 module.exports = router;
