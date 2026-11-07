@@ -27,7 +27,7 @@ const staffNav = [
 const managementNav = [
   { group: "TỔNG QUAN", items: [{ title: "Tổng quan", icon: "overview", path: "" }] },
   { group: "SẢN PHẨM", items: [
-    { title: "Danh mục", icon: "category"},
+    { title: "Danh mục", icon: "category", path: "/quan-tri/danh-muc" },
     { title: "Sản phẩm", icon: "products", path: "/san-pham/them" },
     { title: "Biến thể sản phẩm", icon: "variants" }
   ] },
@@ -41,9 +41,9 @@ const managementNav = [
     { title: "Giao hàng", icon: "delivery" }
   ] },
   { group: "CON NGƯỜI", items: [
-    { title: "Khách hàng", icon: "customers" },
-    { title: "Nhân viên", icon: "employees" },
-    { title: "Phản hồi", icon: "reviews" }
+    { title: "Khách hàng", icon: "customers", path: "/quan-tri/khach-hang" },
+    { title: "Nhân viên", icon: "employees", path: "/quan-tri/nhan-vien" },
+    { title: "Phản hồi", icon: "reviews", path: "/quan-tri/phan-hoi" }
   ] },
   { group: "QUẢN TRỊ", items: [
     { title: "Thống kê & báo cáo", icon: "reports" },
@@ -51,16 +51,44 @@ const managementNav = [
   ] }
 ];
 
+
 function NavItem({ item, active, base, onClose }) {
   const Icon = icons[item.icon] || LayoutDashboard;
   const navigate = useNavigate();
-  const enabled = item.path != undefined; // Nếu chưa có path, tạm thời chưa triển khai màn hình
-  return <button type="button" className={`workspace-nav-item ${active ? "is-active" : ""}`}
-    disabled={!enabled} title={enabled ? item.title : "Sẽ triển khai ở màn hình tiếp theo"}
-    onClick={() => { if (enabled) navigate(base + item.path); onClose(); }}>
-    <Icon size={17}/><span>{item.title}</span>
-  </button>;
+
+  const enabled = item.path !== undefined;
+
+  function handleClick() {
+    if (!enabled) return;
+
+    let destination;
+
+    if (item.path.startsWith("/quan-tri/")) {
+      // Route dùng chung cho Admin và Quản lý
+      destination = item.path;
+    } else {
+      // Các route riêng theo dashboard
+      destination = base + item.path;
+    }
+
+    navigate(destination);
+    onClose();
+  }
+
+  return (
+    <button
+      type="button"
+      className={`workspace-nav-item ${active ? "is-active" : ""}`}
+      disabled={!enabled}
+      title={enabled ? item.title : "Chưa triển khai"}
+      onClick={handleClick}
+    >
+      <Icon size={17} />
+      <span>{item.title}</span>
+    </button>
+  );
 }
+
 
 export default function WorkspaceLayout({ user, mode, activeTitle = "Tổng quan", children }) {
   const navigate = useNavigate();
@@ -92,9 +120,18 @@ export default function WorkspaceLayout({ user, mode, activeTitle = "Tổng quan
                 />
                 )}
             </div>)}
-        <button className="workspace-nav-item" disabled title="Hồ sơ được triển khai trong giai đoạn kế tiếp">
-          <UserRound size={17}/> <span>Tài khoản của tôi</span>
+        <button
+          className="workspace-nav-item"
+          type="button"
+          onClick={() => {
+            navigate("/ho-so");
+            setSidebarOpen(false);
+          }}
+        >
+          <UserRound size={17} />
+          <span>Tài khoản của tôi</span>
         </button>
+
         <button className="workspace-nav-item" type="button" onClick={handleLogout}>
           <LogOut size={17}/><span>Đăng xuất</span>
         </button>
