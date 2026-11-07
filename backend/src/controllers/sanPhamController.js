@@ -652,7 +652,25 @@ async function suaBienThe(req, res) {
   }
 }
 
+async function doiTrangThaiBienThe(req, res) {
+  const id = Number(req.params.maBienThe);
+  const trangThai = String(req.body?.trangThai || "").trim();
+  if (!Number.isInteger(id) || id <= 0 || !TRANG_THAI_BIEN_THE.includes(trangThai)) {
+    return res.status(400).json({ success: false, message: "Dữ liệu không hợp lệ." });
+  }
+  try {
+    const pool = await getPool();
+    const r = await pool.request().input("id", sql.Int, id).input("tt", sql.NVarChar(30), trangThai)
+      .query("UPDATE dbo.BienTheSanPham SET TrangThai = @tt WHERE MaBienThe = @id");
+    if (!r.rowsAffected[0]) return res.status(404).json({ success: false, message: "Không tìm thấy biến thể." });
+    res.json({ success: true, message: "Đã cập nhật trạng thái." });
+  } catch (error) {
+    console.error("Lỗi đổi trạng thái biến thể:", error.message);
+    res.status(500).json({ success: false, message: "Không thể cập nhật trạng thái." });
+  }
+}
+
 module.exports = { layDanhSachSanPham, themSanPham, layDanhMuc,
                    layChatLieu, layDanhSachQuanTri, doiTrangThai,
                    layChiTietSanPham, layDeChinhSua, capNhatSanPham,
-                   layBienThe, themBienThe, suaBienThe };
+                   layBienThe, themBienThe, suaBienThe, doiTrangThaiBienThe };
