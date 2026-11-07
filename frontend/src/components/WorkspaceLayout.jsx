@@ -28,7 +28,7 @@ const managementNav = [
   { group: "TỔNG QUAN", items: [{ title: "Tổng quan", icon: "overview", path: "" }] },
   { group: "SẢN PHẨM", items: [
     { title: "Danh mục", icon: "category"},
-    { title: "Sản phẩm", icon: "products", path: "/san-pham/them" },
+    { title: "Sản phẩm", icon: "products", path: "/san-pham" },
     { title: "Biến thể sản phẩm", icon: "variants" }
   ] },
   { group: "KHO & CUNG ỨNG", items: [

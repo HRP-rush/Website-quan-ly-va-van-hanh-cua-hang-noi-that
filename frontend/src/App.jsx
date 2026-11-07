@@ -6,6 +6,9 @@ import RoleGate from "./components/RoleGate";
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 import ManagementDashboard from "./pages/management/ManagementDashboard";
 import ThemSanPham from "./pages/management/themSanPham";
+import DanhSachSanPham from "./pages/management/DanhSachSanPham";
+import ChiTietSanPham from "./pages/management/ChiTietSanPham";
+import ChinhSuaSanPham from "./pages/management/ChinhSuaSanPham";
 
 export default function App() {
   return <BrowserRouter>
@@ -28,6 +31,18 @@ export default function App() {
         {(user) => <ThemSanPham user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/admin-san-pham/them" element={<RoleGate allow={["Admin"]}>
         {(user) => <ThemSanPham user={user} mode="admin"/>}</RoleGate>}/>
+      <Route path="/quan-ly/san-pham" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => <DanhSachSanPham user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/admin/san-pham" element={<RoleGate allow={["Admin"]}>
+        {(user) => <DanhSachSanPham user={user} mode="admin"/>}</RoleGate>}/>
+      <Route path="/quan-ly/san-pham/:maSanPham" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => <ChiTietSanPham user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/admin/san-pham/:maSanPham" element={<RoleGate allow={["Admin"]}>
+        {(user) => <ChiTietSanPham user={user} mode="admin"/>}</RoleGate>}/>
+      <Route path="/quan-ly/san-pham/:maSanPham/chinh-sua" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => <ChinhSuaSanPham user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/admin/san-pham/:maSanPham/chinh-sua" element={<RoleGate allow={["Admin"]}>
+        {(user) => <ChinhSuaSanPham user={user} mode="admin"/>}</RoleGate>}/>
       <Route path="*" element={<Navigate to="/" replace/>}/>
     </Routes>
   </BrowserRouter>;

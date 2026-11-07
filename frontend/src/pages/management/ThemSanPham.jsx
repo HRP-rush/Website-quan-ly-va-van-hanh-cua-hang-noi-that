@@ -107,7 +107,7 @@ export default function ThemSanPham({ user, mode }) {
     try {
       await createProduct({ ...form, tenSanPham: form.tenSanPham.trim(), maSP: form.maSP.trim() },
         anhChinh?.file, anhBoSung.map((a) => a.file));
-      navigate(base, { replace: true }); // Khi có trang danh sách sản phẩm, đổi sang đường dẫn đó
+      navigate(`${base}/san-pham`, { replace: true }); // Khi có trang danh sách sản phẩm, đổi sang đường dẫn đó
     } catch (e) {
       setServerError(e.message);
     } finally {
@@ -252,7 +252,7 @@ export default function ThemSanPham({ user, mode }) {
     <footer className="sp-footer">
       <span>Bản nháp mới • Chưa tạo sản phẩm</span>
       <div>
-        <button type="button" className="sp-btn sp-btn-outline" onClick={() => navigate(base)} disabled={saving}>Quay lại</button>
+        <button type="button" className="sp-btn sp-btn-outline" onClick={() => navigate(`${base}/san-pham`,)} disabled={saving}>Quay lại</button>
         <button type="button" className="sp-btn sp-btn-dark" onClick={handleSave} disabled={saving}>
           {saving ? "Đang lưu..." : "Lưu sản phẩm"}
         </button>

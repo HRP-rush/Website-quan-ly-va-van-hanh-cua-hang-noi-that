@@ -24,3 +24,52 @@ export async function createProduct(form, anhChinh, anhBoSung) {
   });
   return parse(res);
 }
+
+export const imageUrl = (path) =>
+  !path ? "/images/placeholder-product.jpg"
+  : path.startsWith("/uploads") ? `${API_URL}${path}`   // ảnh upload do backend phục vụ
+  : path;                                                // ảnh mẫu nằm trong frontend/public
+
+export async function getMaterials() {
+  const res = await fetch(`${API_URL}/api/san-pham/chat-lieu`, { credentials: "include" });
+  return (await parse(res)).data; // ["Vải Linen, khung gỗ tự nhiên", ...]
+}
+
+export async function listProducts(params) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => { if (v !== "" && v != null) qs.set(k, v); });
+  const res = await fetch(`${API_URL}/api/san-pham/quan-tri?${qs}`, { credentials: "include" });
+  return parse(res); // { data, total, tongTatCa, trang, soDong }
+}
+
+export async function setProductStatus(maSanPham, trangThai) {
+  const res = await fetch(`${API_URL}/api/san-pham/${encodeURIComponent(maSanPham)}/trang-thai`, {
+    method: "PATCH", credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ trangThai })
+  });
+  return parse(res);
+}
+
+export async function getProductDetail(maSanPham) {
+  const res = await fetch(`${API_URL}/api/san-pham/quan-tri/${encodeURIComponent(maSanPham)}`, { credentials: "include" });
+  return (await parse(res)).data; // { sanPham, anh, bienThe, donHang, tongDon }
+}
+
+export async function getProductForEdit(maSanPham) {
+  const res = await fetch(`${API_URL}/api/san-pham/quan-tri/${encodeURIComponent(maSanPham)}/chinh-sua`, { credentials: "include" });
+  return (await parse(res)).data; // { sanPham, anh: [{ MaAnh, DuongDan }], bienThe: { SoBienThe, KhaDung } }
+}
+
+// thuTuAnh: mảng thứ tự ảnh, vd [12, "moi", 15]; anhMoi: các File mới theo đúng thứ tự xuất hiện của "moi"
+export async function updateProduct(maSanPham, form, thuTuAnh, anhMoi) {
+  const fd = new FormData();
+  Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+  fd.append("thuTuAnh", JSON.stringify(thuTuAnh));
+  anhMoi.forEach((f) => fd.append("anhMoi", f));
+  const res = await fetch(`${API_URL}/api/san-pham/quan-tri/${encodeURIComponent(maSanPham)}`, {
+    method: "PUT", credentials: "include", body: fd
+  });
+  return parse(res);
+}
+
