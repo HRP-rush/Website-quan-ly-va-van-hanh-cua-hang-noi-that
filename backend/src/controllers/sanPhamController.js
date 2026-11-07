@@ -567,7 +567,55 @@ async function layBienThe(req, res) {
   }
 }
 
+async function themBienThe(req, res) {
+  const ma = String(req.params.maSanPham || "").trim();
+  if (!ma || ma.length > 50) return res.status(400).json({ success: false, message: "Mã sản phẩm không hợp lệ." });
+  const { du, loi } = docBienThe(req.body || {}, false);
+  if (loi) return res.status(400).json({ success: false, message: loi });
+
+  let tx;
+  try {
+    const pool = await getPool();
+    tx = new sql.Transaction(pool);
+    await tx.begin();
+
+    const tonTai = await new sql.Request(tx).input("ma", sql.VarChar(50), ma)
+      .query("SELECT 1 AS x FROM dbo.SanPham WHERE MaSanPham = @ma");
+    if (!tonTai.recordset.length) { await tx.rollback(); return res.status(404).json({ success: false, message: "Không tìm thấy sản phẩm." }); }
+
+    const bt = await new sql.Request(tx)
+      .input("ma", sql.VarChar(50), ma)
+      .input("sku", sql.VarChar(80), du.sku)
+      .input("mau", sql.NVarChar(100), du.mauSac)
+      .input("chatLieu", sql.NVarChar(150), du.chatLieu)
+      .input("kichThuoc", sql.NVarChar(150), du.kichThuoc)
+      .input("giaBan", sql.Decimal(18, 2), du.giaBan)
+      .input("giaNhap", sql.Decimal(18, 2), du.giaNhap)
+      .input("tt", sql.NVarChar(30), du.trangThai)
+      .query(`
+        INSERT INTO dbo.BienTheSanPham (MaSanPham, SKU, MauSac, ChatLieu, KichThuoc, GiaBan, GiaNhapThamChieu, TrangThai)
+        OUTPUT INSERTED.MaBienThe
+        VALUES (@ma, @sku, @mau, @chatLieu, @kichThuoc, @giaBan, @giaNhap, @tt)`);
+    const maBienThe = bt.recordset[0].MaBienThe;
+
+    // Tồn kho ban đầu luôn bằng 0: số lượng chỉ tăng qua Phiếu nhập
+    await new sql.Request(tx)
+      .input("id", sql.Int, maBienThe).input("canhBao", sql.Int, du.mucCanhBao)
+      .query("INSERT INTO dbo.TonKho (MaBienThe, SoLuongTon, MucCanhBao) VALUES (@id, 0, @canhBao)");
+
+    await tx.commit();
+    res.status(201).json({ success: true, message: "Đã thêm biến thể.", data: { MaBienThe: maBienThe, SKU: du.sku } });
+  } catch (error) {
+    if (tx) { try { await tx.rollback(); } catch {} }
+    if (error.number === 2601 || error.number === 2627) return res.status(409).json({ success: false, message: "Mã SKU đã tồn tại." });
+    if (error.number === 245 || error.number === 8114)
+      console.error("Kiểu cột BienTheSanPham.MaSanPham chưa khớp SanPham.MaSanPham (cần VARCHAR(50)):", error.message);
+    else console.error("Lỗi thêm biến thể:", error);
+    res.status(500).json({ success: false, message: "Không thể thêm biến thể." });
+  }
+}
+
 module.exports = { layDanhSachSanPham, themSanPham, layDanhMuc,
                    layChatLieu, layDanhSachQuanTri, doiTrangThai,
                    layChiTietSanPham, layDeChinhSua, capNhatSanPham,
-                   layBienThe};
+                   layBienThe, themBienThe };

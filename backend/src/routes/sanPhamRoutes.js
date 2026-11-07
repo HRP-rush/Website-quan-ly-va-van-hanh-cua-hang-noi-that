@@ -3,7 +3,7 @@ const {
   layDanhSachSanPham, layDanhMuc, themSanPham,
   layChatLieu, layDanhSachQuanTri, doiTrangThai,
   layChiTietSanPham, layDeChinhSua, capNhatSanPham,
-  layBienThe
+  layBienThe, themBienThe
 } = require("../controllers/sanPhamController");
 const { xacThuc, choPhepVaiTro } = require("../middleware/xacThuc");
 const { uploadAnhSanPham, uploadAnhChinhSua } = require("../middleware/uploadAnh");
@@ -21,5 +21,6 @@ router.get("/quan-tri/:maSanPham", ...quanTri, layChiTietSanPham);
 router.get("/quan-tri/:maSanPham/chinh-sua", ...quanTri, layDeChinhSua);
 router.put("/quan-tri/:maSanPham", ...quanTri, uploadAnhChinhSua, capNhatSanPham);
 router.get("/quan-tri/:maSanPham/bien-the", ...quanTri, layBienThe);
+router.post("/quan-tri/:maSanPham/bien-the", ...quanTri, themBienThe);
 
 module.exports = router;
