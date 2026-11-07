@@ -18,7 +18,22 @@ const footerGroups = [
   },
 ];
 
-function Footer() {
+function Footer({ variant = "store" }) {
+  if (variant === "checkout") {
+    return (
+      <footer className="site-footer checkout-footer">
+        <div className="footer-bottom">
+          <span>© 2026 MỘC AN INTERIOR. Ngôi nhà là một không gian.</span>
+          <div>
+            <a href="#privacy">Bảo mật thông tin</a>
+            <span>·</span>
+            <a href="#terms">Điều khoản mua hàng</a>
+          </div>
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <footer className="site-footer">
       <div className="footer-main">

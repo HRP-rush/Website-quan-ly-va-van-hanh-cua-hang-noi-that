@@ -8,7 +8,24 @@ const categories = [
   "Về chúng tôi",
 ];
 
-function Header({ itemCount }) {
+function Header({ itemCount, variant = "store" }) {
+  if (variant === "checkout") {
+    return (
+      <header className="site-header checkout-header">
+        <div className="header-main">
+          <a className="brand" href="#home" aria-label="Mộc An - Trang chủ">
+            <span>MỘC AN</span>
+            <small>INTERIOR</small>
+          </a>
+          <div className="checkout-header-actions">
+            <Icon name="shield" size={13} />
+            <span>Thanh toán an tâm · Hỗ trợ 1900 6868</span>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header className="site-header">
       <div className="announcement">
