@@ -56,6 +56,25 @@ const iconPaths = {
       <path d="M12 11v5M12 8h.01" />
     </>
   ),
+  check: <path d="m5 12 4 4L19 6" />,
+  clipboard: (
+    <>
+      <rect x="5" y="4" width="14" height="17" rx="2" />
+      <path d="M9 4.5V3h6v1.5M9 12h6M9 16h6" />
+    </>
+  ),
+  package: (
+    <>
+      <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+      <path d="M3 8v9l9 5 9-5V8M12 13v9M7.5 5.5l9 5" />
+    </>
+  ),
+  warning: (
+    <>
+      <path d="M10.3 3.9 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3l-7.5-13a2 2 0 0 0-3.4-.1Z" />
+      <path d="M12 9v4M12 16h.01" />
+    </>
+  ),
 };
 
 function Icon({ name, size = 16, className = "" }) {

@@ -37,9 +37,6 @@ const initialItems = [
 function Cart() {
   const [items, setItems] = useState(initialItems);
   const [isCheckout, setIsCheckout] = useState(false);
-  const [isCheckingStock, setIsCheckingStock] = useState(false);
-  const [stockIssues, setStockIssues] = useState([]);
-  const [checkoutError, setCheckoutError] = useState("");
 
   const subtotal = useMemo(
     () => items.reduce((total, item) => total + item.price * item.quantity, 0),
@@ -54,54 +51,14 @@ function Cart() {
         item.id === id ? { ...item, quantity } : item,
       ),
     );
-    setStockIssues([]);
-    setCheckoutError("");
   }
 
   function removeItem(id) {
     setItems((currentItems) => currentItems.filter((item) => item.id !== id));
-    setStockIssues([]);
-    setCheckoutError("");
   }
 
-  async function handleCheckout() {
-    setIsCheckingStock(true);
-    setStockIssues([]);
-    setCheckoutError("");
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL ?? ""}/api/kho/kiem-tra-ton-kho`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: items.map((item) => ({
-              sku: item.sku,
-              name: item.name,
-              quantity: item.quantity,
-            })),
-          }),
-        },
-      );
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Không thể kiểm tra tồn kho.");
-      }
-
-      if (!result.duHang) {
-        setStockIssues(result.sanPhamKhongDuHang);
-        return;
-      }
-
-      setIsCheckout(true);
-    } catch (error) {
-      console.error("Lỗi kiểm tra tồn kho trước thanh toán:", error);
-      setCheckoutError(error.message || "Không thể kiểm tra tồn kho. Vui lòng thử lại.");
-    } finally {
-      setIsCheckingStock(false);
-    }
+  function handleCheckout() {
+    setIsCheckout(true);
   }
 
   return (
@@ -151,18 +108,12 @@ function Cart() {
                   <Icon name="arrowLeft" size={15} />
                   Tiếp tục mua sắm
                 </a>
-                <p className="cart-tip">
-                  <Icon name="info" size={15} />
-                  Sản phẩm chưa được giữ chỗ trong giỏ hàng. Tồn kho sẽ được kiểm
-                  tra lại trước khi tạo đơn.
-                </p>
               </section>
               <OrderSummary
                 itemCount={itemCount}
                 subtotal={subtotal}
                 shipping={items.length ? 300_000 : 0}
                 onCheckout={handleCheckout}
-                isCheckingStock={isCheckingStock}
               />
             </div>
           ) : (
@@ -175,28 +126,6 @@ function Cart() {
                 Tiếp tục mua sắm
               </a>
             </section>
-          )}
-          {stockIssues.length > 0 && (
-            <section className="cart-stock-alert" role="alert">
-              <h2>Một số mặt hàng không đủ tồn kho</h2>
-              <ul>
-                {stockIssues.map((item) => (
-                  <li key={item.sku}>
-                    <strong>{item.tenSanPham}</strong>
-                    <span>
-                      {item.lyDo}. Bạn đặt {item.soLuongDat}, hiện còn{" "}
-                      {item.soLuongCon}.
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p>Vui lòng cập nhật số lượng hoặc xóa mặt hàng trước khi tiếp tục.</p>
-            </section>
-          )}
-          {checkoutError && (
-            <p className="cart-stock-error" role="alert">
-              {checkoutError}
-            </p>
           )}
         </main>
       )}

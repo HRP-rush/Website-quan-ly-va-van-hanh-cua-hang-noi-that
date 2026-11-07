@@ -8,12 +8,41 @@ function formatCurrency(value) {
   return `${new Intl.NumberFormat("vi-VN").format(value)} ₫`;
 }
 
-function Checkout({ items, subtotal, shipping, onBack }) {
+async function checkStockAvailability(items) {
+  const response = await fetch(`${API_BASE_URL}/api/kho/kiem-tra-ton-kho`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      items: items.map((item) => ({
+        sku: item.sku,
+        name: item.name,
+        quantity: item.quantity,
+      })),
+    }),
+  });
+  const result = await response.json();
+
+  if (!response.ok || !result.success) {
+    throw new Error(result.message || "Không thể kiểm tra tồn kho. Vui lòng thử lại.");
+  }
+
+  return result;
+}
+
+function Checkout({
+  items,
+  subtotal,
+  shipping,
+  onBack,
+}) {
   const [step, setStep] = useState(1);
   const [recipient, setRecipient] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("COD");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [confirmationNotice, setConfirmationNotice] = useState("");
+  const [confirmedOrder, setConfirmedOrder] = useState(null);
+  const [failedOrder, setFailedOrder] = useState(null);
+  const [isCheckingOrderStock, setIsCheckingOrderStock] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [couponNotice, setCouponNotice] = useState("");
   const [provinces, setProvinces] = useState([]);
@@ -114,10 +143,56 @@ function Checkout({ items, subtotal, shipping, onBack }) {
     setStep(3);
   }
 
-  function handleConfirmOrder() {
-    setConfirmationNotice(
-      "Giao diện xác nhận đã sẵn sàng, nhưng chức năng tạo đơn hàng chưa được kết nối. Đơn hàng chưa được đặt.",
-    );
+  async function handleConfirmOrder() {
+    setConfirmationNotice("");
+    setIsCheckingOrderStock(true);
+    try {
+      const result = await checkStockAvailability(items);
+      if (!result.duHang) {
+        setFailedOrder({ items: result.sanPhamKhongDuHang });
+        return;
+      }
+
+      const now = new Date();
+      const dateCode = now.toISOString().slice(0, 10).replaceAll("-", "");
+      const orderCode = String(Date.now()).slice(-6);
+
+      setFailedOrder(null);
+      setConfirmedOrder({
+        number: `MA-${dateCode}-${orderCode}`,
+        createdAt: now,
+      });
+    } catch (error) {
+      console.error("Lỗi kiểm tra tồn kho khi xác nhận đơn:", error);
+      setConfirmationNotice(
+        error.message || "Không thể kiểm tra tồn kho. Vui lòng thử lại.",
+      );
+    } finally {
+      setIsCheckingOrderStock(false);
+    }
+  }
+
+  async function handleRetryStockCheck() {
+    setIsCheckingOrderStock(true);
+    try {
+      const result = await checkStockAvailability(items);
+      if (!result.duHang) {
+        setFailedOrder({ items: result.sanPhamKhongDuHang });
+        return;
+      }
+
+      setFailedOrder(null);
+      setConfirmationNotice("");
+    } catch (error) {
+      console.error("Lỗi kiểm tra lại tồn kho:", error);
+      setFailedOrder((current) => ({
+        ...current,
+        error:
+          error.message || "Không thể kiểm tra tồn kho. Vui lòng thử lại.",
+      }));
+    } finally {
+      setIsCheckingOrderStock(false);
+    }
   }
 
   function handleApplyCoupon(event) {
@@ -130,7 +205,189 @@ function Checkout({ items, subtotal, shipping, onBack }) {
   }
 
   return (
-    <main className="checkout-page">
+    <main className={`checkout-page${confirmedOrder ? " checkout-page-success" : ""}${failedOrder ? " checkout-page-failure" : ""}`}>
+      {failedOrder ? (
+        <section className="order-failure" aria-labelledby="order-failure-title">
+          <div className="order-failure-icon" aria-hidden="true">
+            <Icon name="warning" size={27} />
+          </div>
+          <p className="order-success-eyebrow">MỘC AN INTERIOR</p>
+          <h1 id="order-failure-title">Đặt hàng không thành công</h1>
+          <p className="order-failure-intro">
+            Rất tiếc, một số sản phẩm hiện không đủ tồn kho. Đơn hàng chưa được
+            tạo và bạn chưa bị tính phí.
+          </p>
+
+          <section className="order-failure-card">
+            <h2>Sản phẩm không đủ tồn kho</h2>
+            <ul className="order-failure-items">
+              {failedOrder.items.map((item) => (
+                <li key={item.sku}>
+                  <div>
+                    <strong>{item.tenSanPham}</strong>
+                    <span>SKU: {item.sku}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="order-failure-total">
+              <span>Tổng đơn hàng</span>
+              <strong>{formatCurrency(subtotal + shipping)}</strong>
+            </div>
+          </section>
+
+          {failedOrder.error && (
+            <p className="order-failure-error" role="alert">
+              {failedOrder.error}
+            </p>
+          )}
+          <div className="order-success-actions">
+            <button
+              className="checkout-continue"
+              disabled={isCheckingOrderStock}
+              onClick={handleRetryStockCheck}
+              type="button"
+            >
+              {isCheckingOrderStock ? "Đang kiểm tra..." : "Thử lại"}
+            </button>
+            <button
+              className="order-success-continue"
+              onClick={onBack}
+              type="button"
+            >
+              Quay lại giỏ hàng
+            </button>
+          </div>
+        </section>
+      ) : confirmedOrder ? (
+        <section className="order-success" aria-labelledby="order-success-title">
+          <div className="order-success-icon" aria-hidden="true">
+            <Icon name="check" size={28} />
+          </div>
+          <p className="order-success-eyebrow">MỘT KHỞI ĐẦU CHO TỔ ẤM MỚI</p>
+          <h1 id="order-success-title">Đặt hàng thành công!</h1>
+          <p className="order-success-thanks">
+            Cảm ơn bạn đã lựa chọn MỘC AN INTERIOR.
+          </p>
+          <p className="order-success-intro">
+            Thông tin đơn hàng đã được ghi nhận trong phiên này. Mộc An sẽ liên
+            hệ để xác nhận và sắp xếp lịch giao phù hợp với bạn.
+          </p>
+          <section className="order-success-card" id="success-order-details">
+            <div className="order-success-card-heading">
+              <div>
+                <strong>{confirmedOrder.number}</strong>
+                <span>
+                  Ngày đặt hàng:{" "}
+                  {confirmedOrder.createdAt.toLocaleDateString("vi-VN")}
+                </span>
+              </div>
+              <span className="order-success-status">Chờ xác nhận</span>
+            </div>
+
+            <div className="order-success-card-content">
+              <section className="order-success-products">
+                <h2>Những lựa chọn của bạn</h2>
+                {items.map((item) => (
+                  <article className="order-success-product" key={item.id}>
+                    <img src={item.image} alt={item.imageAlt} />
+                    <div>
+                      <h3>{item.name}</h3>
+                      <p>{item.material} / {item.dimensions}</p>
+                      <strong>
+                        {formatCurrency(item.price)} × {item.quantity}
+                      </strong>
+                    </div>
+                  </article>
+                ))}
+                <p className="order-success-delivery">
+                  Giao đến: {recipient?.recipientName} · {recipient?.phone}
+                  <br />
+                  {wardName}, {provinceName}
+                  <br />
+                  {recipient?.address}
+                  {recipient?.email && (
+                    <>
+                      <br />
+                      Email: {recipient.email}
+                    </>
+                  )}
+                </p>
+              </section>
+
+              <section className="order-success-payment">
+                <div className="checkout-summary-row">
+                  <span>Tạm tính ({itemCount} sản phẩm)</span>
+                  <span>{formatCurrency(subtotal)}</span>
+                </div>
+                <div className="checkout-summary-row">
+                  <span>Phí giao hàng &amp; lắp đặt</span>
+                  <span>{formatCurrency(shipping)}</span>
+                </div>
+                <div className="checkout-summary-row">
+                  <span>Giảm giá</span>
+                  <span>0 ₫</span>
+                </div>
+                <div className="checkout-summary-total">
+                  <span>Tổng thanh toán</span>
+                  <strong>{formatCurrency(subtotal + shipping)}</strong>
+                </div>
+                <p className="checkout-tax-note">
+                  Đã bao gồm VAT. Không phát sinh chi phí khi nhận hàng.
+                </p>
+                <div className="order-success-payment-method">
+                  <strong>{paymentMethodName}</strong>
+                  <span>
+                    {paymentMethod === "COD"
+                      ? "Chưa thanh toán · Không cần chuyển khoản trước."
+                      : "Phương thức thanh toán đang ở chế độ mô phỏng."}
+                  </span>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <ol className="order-success-steps">
+            <li>
+              <Icon name="clipboard" size={20} />
+              <span>
+                <strong>Xác nhận đơn hàng</strong>
+                <small>Mộc An sẽ gọi trong giờ làm việc.</small>
+              </span>
+            </li>
+            <li>
+              <Icon name="package" size={20} />
+              <span>
+                <strong>Chuẩn bị cẩn thận</strong>
+                <small>Kiểm tra sản phẩm trước khi giao.</small>
+              </span>
+            </li>
+            <li>
+              <Icon name="truck" size={20} />
+              <span>
+                <strong>Giao hàng &amp; lắp đặt</strong>
+                <small>Dự kiến trong 3–5 ngày làm việc.</small>
+              </span>
+            </li>
+          </ol>
+
+          <div className="order-success-actions">
+            <a className="checkout-continue" href="#success-order-details">
+              Xem đơn hàng
+            </a>
+            <a
+              className="order-success-continue"
+              href="#products"
+            >
+              Tiếp tục mua sắm
+            </a>
+          </div>
+          <p className="order-success-support">
+            Cần hỗ trợ? Gọi 1900 6868 hoặc gửi email đến hello@mocan.vn.
+          </p>
+        </section>
+      ) : (
+        <>
       <div className="breadcrumbs">
         <a href="#home">Trang chủ</a>
         <span>/</span>
@@ -330,7 +587,7 @@ function Checkout({ items, subtotal, shipping, onBack }) {
                 defaultValue={recipient?.address ?? ""}
                 required
               />
-              <small>Địa chỉ này dùng cho giao hàng thực tế.</small>
+
             </div>
             <div className="checkout-field">
               <label htmlFor="delivery-note">
@@ -586,11 +843,13 @@ function Checkout({ items, subtotal, shipping, onBack }) {
               </button>
               <button
                 className="checkout-continue"
-                disabled={!acceptedTerms}
+                disabled={!acceptedTerms || isCheckingOrderStock}
                 onClick={handleConfirmOrder}
                 type="button"
               >
-                Xác nhận đặt hàng
+                {isCheckingOrderStock
+                  ? "Đang kiểm tra tồn kho..."
+                  : "Xác nhận đặt hàng"}
               </button>
             </div>
             {confirmationNotice && (
@@ -650,6 +909,8 @@ function Checkout({ items, subtotal, shipping, onBack }) {
           )}
         </aside>
       </div>
+        </>
+      )}
     </main>
   );
 }

@@ -9,7 +9,6 @@ function OrderSummary({
   subtotal,
   shipping,
   onCheckout,
-  isCheckingStock = false,
 }) {
   return (
     <aside className="order-column" aria-label="Tóm tắt đơn hàng">
@@ -38,9 +37,8 @@ function OrderSummary({
           className="checkout-button"
           type="button"
           onClick={onCheckout}
-          disabled={isCheckingStock}
         >
-          {isCheckingStock ? "Đang kiểm tra tồn kho..." : "Tiến hành thanh toán"}
+          Tiến hành thanh toán
         </button>
         <p className="secure-note">
           <Icon name="shield" size={15} />
