@@ -1,4 +1,4 @@
-
+const {THU_MUC, TIEN_TO_URL} = require("../middleware/uploadAnh");
 const fs = require("fs");
 const { sql, getPool } = require("../config/db");
 
@@ -118,7 +118,7 @@ async function themSanPham(req, res) {
     for (let i = 0; i < dsAnh.length; i++) {
       await new sql.Request(tx)
         .input("ma", sql.VarChar(50), maSanPham)                   // ĐỔI 4: VarChar thay cho Int
-        .input("duongDan", sql.NVarChar(1000), `/uploads/san-pham/${dsAnh[i].filename}`)
+        .input("duongDan", sql.NVarChar(1000), `${TIEN_TO_URL}/${dsAnh[i].filename}`)
         .input("laDaiDien", sql.Bit, i === 0 ? 1 : 0)
         .query(`INSERT INTO dbo.AnhSanPham (MaSanPham, DuongDan, LaAnhDaiDien) VALUES (@ma, @duongDan, @laDaiDien)`);
     }
@@ -403,7 +403,8 @@ async function capNhatSanPham(req, res) {
   const tenSanPham = String(b.tenSanPham || "").trim();
   const maDanhMuc = String(b.maDanhMuc || "").trim();
   const giaCoBan = Number(b.giaCoBan);
-  const trangThai = String(b.trangThai || "").trim();
+  const trangThai = String(b.trangThai || "").trim()
+  const LA_ANH_UPLOAD = /^\/images\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
 
   if (!ma || ma.length > 50) return loi(400, "Mã sản phẩm không hợp lệ.");
   if (!tenSanPham || tenSanPham.length > 250) return loi(400, "Tên sản phẩm bắt buộc, tối đa 250 ký tự.");
@@ -461,7 +462,7 @@ async function capNhatSanPham(req, res) {
       .query("DELETE FROM dbo.AnhSanPham WHERE MaSanPham = @ma AND MaBienThe IS NULL");
     let k = 0;
     for (let i = 0; i < thuTu.length; i++) {
-      const duongDan = thuTu[i] === "moi" ? `/uploads/san-pham/${filesMoi[k++].filename}` : duongDanCu.get(thuTu[i]);
+      const duongDan = thuTu[i] === "moi" ? `/${TIEN_TO_URL}/${filesMoi[k++].filename}` : duongDanCu.get(thuTu[i]);
       await new sql.Request(tx)
         .input("ma", sql.VarChar(50), ma)
         .input("duongDan", sql.NVarChar(1000), duongDan)
@@ -484,7 +485,7 @@ async function capNhatSanPham(req, res) {
   try {
     const pool = await getPool();
     for (const dd of duongDanBiXoa) {
-      if (!dd.startsWith("/uploads/san-pham/")) continue; // ảnh mẫu nằm ở frontend/public, không đụng
+      if (!LA_ANH_UPLOAD.test(dd)) continue; // ảnh mẫu nằm ở frontend/public, không đụng
       const conDung = await pool.request().input("d", sql.NVarChar(1000), dd)
         .query("SELECT TOP (1) 1 AS x FROM dbo.AnhSanPham WHERE DuongDan = @d");
       if (!conDung.recordset.length) fs.unlink(nodePath.join(THU_MUC, nodePath.basename(dd)), () => {});

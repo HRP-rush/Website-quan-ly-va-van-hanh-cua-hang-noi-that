@@ -3,7 +3,8 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 
-const THU_MUC = path.join(__dirname, "../../uploads/san-pham");
+const THU_MUC = path.join(__dirname, "../../../frontend/public/images");
+const TIEN_TO_URL = "/images";
 fs.mkdirSync(THU_MUC, { recursive: true });
 
 const DUOI = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp" };
@@ -37,4 +38,4 @@ const uploadAnhSanPham = boc(upload.fields([
 // Trang Chỉnh sửa: chỉ các ảnh MỚI thêm, gửi chung một trường "anhMoi"
 const uploadAnhChinhSua = boc(upload.array("anhMoi", 9));
 
-module.exports = { THU_MUC, uploadAnhSanPham, uploadAnhChinhSua };
+module.exports = { THU_MUC, TIEN_TO_URL, uploadAnhSanPham, uploadAnhChinhSua };
