@@ -28,7 +28,6 @@ admin.get('/tai-khoan',accounts.list);
 admin.post('/tai-khoan',accounts.create);
 admin.get('/tai-khoan/:id',accounts.detail);
 admin.put('/tai-khoan/:id',accounts.update);
-admin.patch('/tai-khoan/:id/vai-tro',accounts.changeRole);
 admin.patch('/tai-khoan/:id/trang-thai',accounts.status);
 admin.delete('/tai-khoan/:id',accounts.remove);
 // Aliases in the team's documented API (employee administration).

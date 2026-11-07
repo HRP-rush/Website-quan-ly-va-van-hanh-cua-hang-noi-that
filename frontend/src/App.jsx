@@ -54,7 +54,39 @@ export default function App() {
         }
       />
 
-      <Route path="/quan-tri/khach-hang" element={<RoleGate allow={['Admin','Quản lý']}>{u=><AccountManagement user={u} type="customers"/>}</RoleGate>}/>
+      <Route
+        path="/quan-tri/khach-hang"
+        element={
+          <RoleGate allow={["Admin", "Quản lý"]}>
+            {(u) => (
+              <WorkspaceLayout
+                user={u}
+                mode={u.TenVaiTro === "Admin" ? "admin" : "management"}
+                activeTitle="Khách hàng"
+              >
+                <AccountManagement user={u} type="customers" />
+              </WorkspaceLayout>
+            )}
+          </RoleGate>
+        }
+      />
+
+      <Route
+        path="/quan-tri/nhan-vien"
+        element={
+          <RoleGate allow={["Admin", "Quản lý"]}>
+            {(u) => (
+              <WorkspaceLayout
+                user={u}
+                mode={u.TenVaiTro === "Admin" ? "admin" : "management"}
+                activeTitle="Nhân viên"
+              >
+                <AccountManagement user={u} type="staff" />
+              </WorkspaceLayout>
+            )}
+          </RoleGate>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace/>}/>
     </Routes>
   </BrowserRouter>;

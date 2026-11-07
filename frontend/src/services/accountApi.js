@@ -12,7 +12,6 @@ export const accountAPI={
  detail:id=>request(`/api/v1/quan-tri/tai-khoan/${id}`),
  create:b=>request('/api/v1/quan-tri/tai-khoan',{method:'POST',body:b}),
  update:(id,b)=>request(`/api/v1/quan-tri/tai-khoan/${id}`,{method:'PUT',body:b}),
- role:(id,vaiTro)=>request(`/api/v1/quan-tri/tai-khoan/${id}/vai-tro`,{method:'PATCH',body:{vaiTro}}),
  status:(id,trangThai)=>request(`/api/v1/quan-tri/tai-khoan/${id}/trang-thai`,{method:'PATCH',body:{trangThai}}),
  remove:id=>request(`/api/v1/quan-tri/tai-khoan/${id}`,{method:'DELETE'})
 };
