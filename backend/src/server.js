@@ -15,6 +15,7 @@ const cookieParser = require("cookie-parser");
 const { rateLimit } = require("express-rate-limit");
 const taiKhoanRoutes = require("./routes/taiKhoanRoutes");
 
+const khoRoutes = require("./routes/khoRoutes");
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:5173",
@@ -102,3 +103,5 @@ app.use(
   "/api/v1/tai-khoan",
   taiKhoanRoutes
 );
+
+app.use("/api/kho", khoRoutes);
