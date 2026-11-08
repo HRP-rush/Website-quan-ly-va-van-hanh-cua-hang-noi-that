@@ -183,6 +183,41 @@ async function layGioHang(req, res) {
   }
 }
 
+async function layBienTheTrongGio(req, res) {
+  const maSanPham = String(req.params.maSanPham || "").trim();
+  if (!laMaSanPhamHopLe(maSanPham)) {
+    return res.status(400).json({ success: false, message: "Mã sản phẩm không hợp lệ." });
+  }
+
+  try {
+    const pool = await getPool();
+    const result = await ganThamSoGiuHang(pool.request())
+      .input("maSanPham", sql.VarChar(50), maSanPham)
+      .query(`
+        SELECT b.MaBienThe, b.SKU, b.MauSac, b.ChatLieu, b.KichThuoc,
+               b.GiaBan, b.TrangThai, sp.TrangThai AS TrangThaiSanPham,
+               ISNULL(t.SoLuongTon, 0) AS SoLuongTon, ISNULL(g.DaGiu, 0) AS DaGiu
+        FROM dbo.BienTheSanPham b
+        INNER JOIN dbo.SanPham sp ON sp.MaSanPham = b.MaSanPham
+        LEFT JOIN dbo.TonKho t ON t.MaBienThe = b.MaBienThe
+        OUTER APPLY (
+          SELECT SUM(ct.SoLuong) AS DaGiu
+          FROM dbo.CTDonHang ct
+          INNER JOIN dbo.DonHang dh ON dh.MaDon = ct.MaDon
+          WHERE ct.MaBienThe = b.MaBienThe
+            AND dh.TrangThai IN (@ttChoXacNhan, @ttDaXacNhan, @ttDangChuanBi, @ttDangGiao)
+        ) g
+        WHERE b.MaSanPham = @maSanPham
+        ORDER BY b.MaBienThe
+      `);
+
+    return res.json({ success: true, data: result.recordset.map(ganTrangThai) });
+  } catch (error) {
+    console.error("Lỗi lấy biến thể sản phẩm trong giỏ hàng:", error.message);
+    return res.status(500).json({ success: false, message: "Không thể tải danh sách biến thể sản phẩm." });
+  }
+}
+
 async function tinhTongTienGioHang(req, res) {
   try {
     const pool = await getPool();
@@ -391,6 +426,95 @@ async function capNhatSoLuong(req, res) {
   }
 }
 
+async function capNhatBienThe(req, res) {
+  const maCTGio = Number(req.body?.maCTGio);
+  const maBienThe = String(req.body?.maBienThe || "").trim();
+  if (!laSoNguyenDuong(maCTGio) || maCTGio > 2147483647 || !laMaBienTheHopLe(maBienThe)) {
+    return res.status(400).json({ success: false, message: "Mã sản phẩm trong giỏ hoặc mã biến thể không hợp lệ." });
+  }
+
+  let transaction;
+  let transactionStarted = false;
+  try {
+    const pool = await getPool();
+    transaction = new sql.Transaction(pool);
+    await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
+    transactionStarted = true;
+
+    const currentResult = await new sql.Request(transaction)
+      .input("maCTGio", sql.Int, maCTGio)
+      .input("maNguoiDung", sql.Int, req.user.MaNguoiDung)
+      .query(`
+        SELECT ct.MaCTGio, ct.MaGio, ct.MaBienThe, ct.SoLuong, b.MaSanPham
+        FROM dbo.CTGioHang ct WITH (UPDLOCK, HOLDLOCK)
+        INNER JOIN dbo.GioHang gh ON gh.MaGio = ct.MaGio
+        INNER JOIN dbo.BienTheSanPham b ON b.MaBienThe = ct.MaBienThe
+        WHERE ct.MaCTGio = @maCTGio AND gh.MaNguoiDung = @maNguoiDung
+      `);
+    const current = currentResult.recordset[0];
+    if (!current) throw loi(404, "Không tìm thấy sản phẩm trong giỏ hàng.");
+
+    const selectedResult = await layThongTinTonKho(
+      new sql.Request(transaction)
+        .input("maBienThe", sql.VarChar(80), maBienThe)
+        .input("maSanPham", sql.VarChar(50), null),
+      true
+    );
+    const selected = selectedResult.recordset[0];
+    if (!selected || selected.MaSanPham !== current.MaSanPham) {
+      throw loi(400, "Biến thể đã chọn không thuộc sản phẩm này.");
+    }
+    if (selected.TrangThai !== "Đang bán" || selected.TrangThaiSanPham !== "Đang bán") {
+      throw loi(409, "Biến thể này hiện không còn được kinh doanh.");
+    }
+
+    let targetCartItemId = current.MaCTGio;
+    let targetQuantity = Number(current.SoLuong);
+    if (selected.MaBienThe !== current.MaBienThe) {
+      const duplicateResult = await new sql.Request(transaction)
+        .input("maGio", sql.Int, current.MaGio)
+        .input("maBienThe", sql.VarChar(80), selected.MaBienThe)
+        .input("maCTGio", sql.Int, current.MaCTGio)
+        .query(`
+          SELECT MaCTGio, SoLuong
+          FROM dbo.CTGioHang WITH (UPDLOCK, HOLDLOCK)
+          WHERE MaGio = @maGio AND MaBienThe = @maBienThe AND MaCTGio <> @maCTGio
+        `);
+      const duplicate = duplicateResult.recordset[0];
+
+      if (duplicate) {
+        targetQuantity += Number(duplicate.SoLuong);
+        if (targetQuantity > 2147483647) throw loi(409, "Tổng số lượng vượt giới hạn cho phép.");
+        targetCartItemId = duplicate.MaCTGio;
+        await new sql.Request(transaction)
+          .input("maCTGio", sql.Int, targetCartItemId)
+          .input("soLuong", sql.Int, targetQuantity)
+          .query("UPDATE dbo.CTGioHang SET SoLuong = @soLuong WHERE MaCTGio = @maCTGio");
+        await new sql.Request(transaction)
+          .input("maCTGio", sql.Int, current.MaCTGio)
+          .query("DELETE FROM dbo.CTGioHang WHERE MaCTGio = @maCTGio");
+      } else {
+        await new sql.Request(transaction)
+          .input("maCTGio", sql.Int, current.MaCTGio)
+          .input("maBienThe", sql.VarChar(80), selected.MaBienThe)
+          .query("UPDATE dbo.CTGioHang SET MaBienThe = @maBienThe WHERE MaCTGio = @maCTGio");
+      }
+    }
+
+    await transaction.commit();
+    return res.json({
+      success: true,
+      message: "Đã cập nhật biến thể sản phẩm.",
+      data: { MaCTGio: targetCartItemId, MaBienThe: selected.MaBienThe, SoLuong: targetQuantity }
+    });
+  } catch (error) {
+    if (transactionStarted) await transaction.rollback();
+    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
+    console.error("Lỗi cập nhật biến thể giỏ hàng:", error.message);
+    return res.status(500).json({ success: false, message: "Không thể cập nhật biến thể sản phẩm." });
+  }
+}
+
 async function xoaSanPham(req, res) {
   const maCTGio = Number(req.params.id);
   if (!laSoNguyenDuong(maCTGio)) {
@@ -502,8 +626,10 @@ async function xacNhanGiaoNhan(req, res) {
 
 module.exports = {
   layGioHang,
+  layBienTheTrongGio,
   themSanPham,
   capNhatSoLuong,
+  capNhatBienThe,
   xoaSanPham,
   kiemTraTonKho,
   tinhTongTienGioHang,

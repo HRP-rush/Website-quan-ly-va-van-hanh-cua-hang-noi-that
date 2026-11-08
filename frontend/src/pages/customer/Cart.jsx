@@ -5,18 +5,22 @@ import {
   Info,
   Minus,
   Plus,
+  SlidersHorizontal,
   ShieldCheck,
   ShoppingBag,
   Trash2,
-  Truck
+  Truck,
+  X
 } from "lucide-react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import {
   checkCartStock,
   getCart,
+  getCartVariants,
   notifyCartCount,
   removeCartItem,
+  updateCartVariant,
   updateCartQuantity
 } from "../../services/cartService";
 import "../../styles/cart.css";
@@ -61,6 +65,12 @@ export default function Cart() {
   const [error, setError] = useState("");
   const [pendingId, setPendingId] = useState(null);
   const [savingIds, setSavingIds] = useState([]);
+  const [variantsByProduct, setVariantsByProduct] = useState({});
+  const [openVariantId, setOpenVariantId] = useState(null);
+  const [selectedVariantId, setSelectedVariantId] = useState("");
+  const [variantError, setVariantError] = useState("");
+  const [variantLoadingId, setVariantLoadingId] = useState(null);
+  const [variantSavingId, setVariantSavingId] = useState(null);
   const itemsRef = useRef([]);
   const queuedQuantitiesRef = useRef(new Map());
   const syncingQuantityRef = useRef(new Set());
@@ -169,6 +179,85 @@ export default function Cart() {
     void saveQueuedQuantity(latestItem, key);
   }
 
+  async function toggleVariantSelector(item) {
+    const itemId = cartItemKey(item);
+    if (openVariantId === itemId) {
+      setOpenVariantId(null);
+      return;
+    }
+
+    setSelectedVariantId(String(item.MaBienThe));
+    setVariantError("");
+    setOpenVariantId(itemId);
+    if (variantsByProduct[item.MaSanPham]) return;
+
+    setVariantLoadingId(itemId);
+    try {
+      const variants = await getCartVariants(item.MaSanPham);
+      setVariantsByProduct((current) => ({ ...current, [item.MaSanPham]: variants }));
+    } catch (loadError) {
+      setError(loadError.message);
+      setOpenVariantId(null);
+    } finally {
+      setVariantLoadingId(null);
+    }
+  }
+
+  async function confirmVariantSelection(item) {
+    const itemId = cartItemKey(item);
+    const variant = (variantsByProduct[item.MaSanPham] || []).find(
+      (option) => String(option.MaBienThe) === selectedVariantId
+    );
+    if (!variant) return;
+    if (String(variant.MaBienThe) === String(item.MaBienThe)) {
+      setOpenVariantId(null);
+      return;
+    }
+
+    setVariantSavingId(itemId);
+    setVariantError("");
+    setError("");
+    try {
+      const result = await updateCartVariant(item, variant.MaBienThe);
+      const saved = result.data;
+      const updatedItem = {
+        ...item,
+        MaCTGio: saved.MaCTGio,
+        MaBienThe: variant.MaBienThe,
+        SKU: variant.SKU,
+        MauSac: variant.MauSac,
+        ChatLieu: variant.ChatLieu,
+        KichThuoc: variant.KichThuoc,
+        GiaBan: Number(variant.GiaBan || 0),
+        SoLuong: Number(saved.SoLuong),
+        TrangThai: variant.TrangThai,
+        TrangThaiSanPham: variant.TrangThaiSanPham,
+        TinhTrangKho: variant.TinhTrangKho,
+        stock: Number(variant.SoLuongKhaDung || 0),
+        stockCheckError: ""
+      };
+      const updatedItems = itemsRef.current.filter(
+        (currentItem) =>
+          !sameCartItem(currentItem, item) &&
+          String(currentItem.MaCTGio) !== String(saved.MaCTGio)
+      );
+      updatedItems.push(updatedItem);
+
+      itemsRef.current = updatedItems;
+      confirmedQuantitiesRef.current = new Map(
+        updatedItems.map((currentItem) => [cartItemKey(currentItem), Number(currentItem.SoLuong)])
+      );
+      setItems(updatedItems);
+      notifyCartCount(updatedItems);
+      setOpenVariantId(null);
+      setVariantError("");
+    } catch (updateError) {
+      setVariantError(updateError.message);
+    } finally {
+      setVariantSavingId(null);
+    }
+  }
+
   async function deleteItem(item) {
     setPendingId(cartItemKey(item));
     setError("");
@@ -181,6 +270,14 @@ export default function Cart() {
       setPendingId(null);
     }
   }
+
+  const activeVariantItem = items.find((item) => cartItemKey(item) === openVariantId);
+  const activeVariantOptions = activeVariantItem
+    ? variantsByProduct[activeVariantItem.MaSanPham] || []
+    : [];
+  const selectedVariant = activeVariantOptions.find(
+    (variant) => String(variant.MaBienThe) === selectedVariantId
+  );
 
   return (
     <>
@@ -237,6 +334,7 @@ export default function Cart() {
                 <section className="cart-items" aria-label="Sản phẩm trong giỏ">
                   <div className="cart-table-head">
                     <span>Sản phẩm</span>
+                    <span>Biến thể</span>
                     <span>Số lượng</span>
                     <span>Thành tiền</span>
                   </div>
@@ -263,7 +361,7 @@ export default function Cart() {
                           <div className="cart-product-details">
                             <h2>{item.TenSanPham}</h2>
                             <p>
-                              {[item.MauSac, item.ChatLieu, item.KichThuoc].filter(Boolean).join(" / ") ||
+                              Biến thể: {[item.MauSac, item.ChatLieu, item.KichThuoc].filter(Boolean).join(" / ") ||
                                 item.SKU ||
                                 "Nội thất Mộc An"}
                             </p>
@@ -276,12 +374,27 @@ export default function Cart() {
                           </div>
                         </div>
 
+                        <div className="cart-variant-column">
+                          <button
+                            className="cart-variant-button"
+                            type="button"
+                            aria-label={`Chọn biến thể cho ${item.TenSanPham}`}
+                            aria-expanded={openVariantId === itemId}
+                            title={item._cartSource === "server" ? "Chọn biến thể" : "Đăng nhập để đổi biến thể"}
+                            disabled={item._cartSource !== "server" || isDeleting || isSaving || variantSavingId === itemId}
+                            onClick={() => toggleVariantSelector(item)}
+                          >
+                            <SlidersHorizontal size={13} />
+                            <span>Biến thể</span>
+                          </button>
+                        </div>
+
                         <div className="cart-quantity-column">
                           <div className="cart-quantity" aria-label={`Số lượng ${item.TenSanPham}`}>
                             <button
                               type="button"
                               aria-label="Giảm số lượng"
-                              disabled={isDeleting || item.SoLuong <= 1}
+                              disabled={isDeleting || item.SoLuong <= 1 || isSaving}
                               onClick={() => changeQuantity(item, -1)}
                             >
                               <Minus size={14} />
@@ -290,7 +403,7 @@ export default function Cart() {
                             <button
                               type="button"
                               aria-label="Tăng số lượng"
-                              disabled={!canIncrease}
+                              disabled={!canIncrease || isSaving}
                               onClick={() => changeQuantity(item, 1)}
                             >
                               <Plus size={14} />
@@ -371,6 +484,104 @@ export default function Cart() {
           )}
         </div>
       </main>
+      {activeVariantItem && (
+        <div
+          className="cart-variant-modal-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !variantSavingId) setOpenVariantId(null);
+          }}
+        >
+          <section
+            className="cart-variant-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cart-variant-modal-title"
+          >
+            <header className="cart-variant-modal-header">
+              <div>
+                <p className="eyebrow">MỘC AN INTERIOR</p>
+                <h2 id="cart-variant-modal-title">Chọn biến thể sản phẩm</h2>
+              </div>
+              <button
+                className="cart-variant-modal-close"
+                type="button"
+                aria-label="Đóng cửa sổ chọn biến thể"
+                disabled={Boolean(variantSavingId)}
+                onClick={() => setOpenVariantId(null)}
+              >
+                <X size={18} />
+              </button>
+            </header>
+
+            <p className="cart-variant-modal-product">{activeVariantItem.TenSanPham}</p>
+            {variantLoadingId === cartItemKey(activeVariantItem) ? (
+              <div className="cart-variant-modal-state" role="status">Đang tải biến thể...</div>
+            ) : activeVariantOptions.length === 0 ? (
+              <div className="cart-variant-modal-state">Sản phẩm chưa có biến thể để lựa chọn.</div>
+            ) : (
+              <div className="cart-variant-options" role="radiogroup" aria-label="Các biến thể sản phẩm">
+                {activeVariantOptions.map((variant) => {
+                  const isCurrent = String(variant.MaBienThe) === String(activeVariantItem.MaBienThe);
+                  const isSelected = String(variant.MaBienThe) === selectedVariantId;
+                  const unavailable = variant.TrangThai !== "Đang bán" ||
+                    variant.TrangThaiSanPham !== "Đang bán" ||
+                    Number(variant.SoLuongKhaDung) < 1;
+                  const description = [variant.MauSac, variant.ChatLieu, variant.KichThuoc]
+                    .filter(Boolean)
+                    .join(" / ");
+
+                  return (
+                    <label
+                      className={`cart-variant-option${isSelected ? " is-selected" : ""}${unavailable && !isCurrent ? " is-unavailable" : ""}`}
+                      key={variant.MaBienThe}
+                    >
+                      <input
+                        type="radio"
+                        name={`cart-variant-${cartItemKey(activeVariantItem)}`}
+                        value={variant.MaBienThe}
+                        checked={isSelected}
+                        disabled={(unavailable && !isCurrent) || variantSavingId === cartItemKey(activeVariantItem)}
+                        onChange={() => setSelectedVariantId(String(variant.MaBienThe))}
+                      />
+                      <span className="cart-variant-option-details">
+                        <strong>{description || variant.SKU || variant.MaBienThe}</strong>
+                        <small>{variant.SKU ? `Mã biến thể: ${variant.SKU}` : variant.MaBienThe}</small>
+                      </span>
+                      <span className="cart-variant-option-meta">
+                        <strong>{formatPrice(variant.GiaBan)}</strong>
+                        <small className={unavailable ? "is-unavailable" : ""}>
+                          {unavailable ? (isCurrent ? "Biến thể hiện tại · hết hàng" : "Hết hàng") : `Còn ${variant.SoLuongKhaDung}`}
+                        </small>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+
+            {variantError && <p className="cart-variant-modal-error" role="alert">{variantError}</p>}
+
+            <footer className="cart-variant-modal-actions">
+              <button
+                className="cart-variant-cancel"
+                type="button"
+                disabled={Boolean(variantSavingId)}
+                onClick={() => setOpenVariantId(null)}
+              >
+                Hủy
+              </button>
+              <button
+                className="cart-variant-confirm"
+                type="button"
+                disabled={!selectedVariant || Boolean(variantSavingId) || variantLoadingId === cartItemKey(activeVariantItem)}
+                onClick={() => confirmVariantSelection(activeVariantItem)}
+              >
+                {variantSavingId ? "Đang cập nhật..." : "Xác nhận biến thể"}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
       <Footer />
     </>
   );

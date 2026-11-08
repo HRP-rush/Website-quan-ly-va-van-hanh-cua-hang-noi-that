@@ -118,6 +118,25 @@ export async function getCartTotal() {
   return result.data;
 }
 
+export async function getCartVariants(maSanPham) {
+  const result = await request(`/bien-the/${encodeURIComponent(maSanPham)}`);
+  return (result.data || []).map((variant) => ({
+    ...variant,
+    stock: Number(variant.SoLuongKhaDung || 0)
+  }));
+}
+
+export async function updateCartVariant(item, maBienThe) {
+  if (item._cartSource !== "server") {
+    throw new Error("Vui lòng đăng nhập để thay đổi biến thể trong giỏ hàng.");
+  }
+
+  return request("/cap-nhat-bien-the", {
+    method: "PUT",
+    body: JSON.stringify({ maCTGio: item.MaCTGio, maBienThe: String(maBienThe) })
+  });
+}
+
 export async function checkCartStock(maBienThe, maSanPham) {
   const query = new URLSearchParams(
     maBienThe
