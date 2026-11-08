@@ -152,10 +152,7 @@ export default function Register() {
 
   return (
     <>
-      <Header
-        onSearch={() => {}}
-        onCategoryChange={() => {}}
-      />
+      <Header />
 
       <main className="register-page">
         <div className="container register-layout">

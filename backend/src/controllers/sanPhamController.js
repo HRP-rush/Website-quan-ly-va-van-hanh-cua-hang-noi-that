@@ -16,7 +16,14 @@ async function layDanhSachSanPham(req, res) {
 
         dm.TenDanhMuc,
 
-        anh.DuongDan AS DuongDanAnh
+        anh.DuongDan AS DuongDanAnh,
+        bt.MaBienThe,
+        bt.SKU,
+        bt.MauSac,
+        bt.ChatLieu,
+        bt.KichThuoc,
+        bt.GiaBan,
+        bt.SoLuongKhaDung AS SoLuongTon
 
       FROM dbo.SanPham AS sp
 
@@ -32,6 +39,26 @@ async function layDanhSachSanPham(req, res) {
           a.LaAnhDaiDien DESC,
           a.MaAnh ASC
       ) AS anh
+
+      OUTER APPLY (
+        SELECT TOP (1) b.MaBienThe, b.SKU, b.MauSac, b.ChatLieu, b.KichThuoc, b.GiaBan,
+          CASE
+            WHEN b.TrangThai <> N'Đang bán' OR sp.TrangThai <> N'Đang bán' THEN 0
+            ELSE CASE WHEN ISNULL(t.SoLuongTon, 0) - ISNULL(g.DaGiu, 0) > 0
+              THEN ISNULL(t.SoLuongTon, 0) - ISNULL(g.DaGiu, 0) ELSE 0 END
+          END AS SoLuongKhaDung
+        FROM dbo.BienTheSanPham b
+        LEFT JOIN dbo.TonKho t ON t.MaBienThe = b.MaBienThe
+        OUTER APPLY (
+          SELECT SUM(ct.SoLuong) AS DaGiu
+          FROM dbo.CTDonHang ct
+          INNER JOIN dbo.DonHang dh ON dh.MaDon = ct.MaDon
+          WHERE ct.MaBienThe = b.MaBienThe
+            AND dh.TrangThai IN (N'Chờ xác nhận', N'Đã xác nhận', N'Đang chuẩn bị', N'Đang giao')
+        ) g
+        WHERE b.MaSanPham = sp.MaSanPham AND b.TrangThai = N'Đang bán'
+        ORDER BY CASE WHEN ISNULL(t.SoLuongTon, 0) - ISNULL(g.DaGiu, 0) > 0 THEN 0 ELSE 1 END, b.MaBienThe
+      ) AS bt
 
       ORDER BY sp.MaSanPham DESC
     `);
@@ -247,7 +274,7 @@ async function doiTrangThai(req, res) {
   }
 }
 
-const DON_DANG_GIU_HANG = ["Chờ xác nhận", "Đã xác nhận"];
+const DON_DANG_GIU_HANG = ["Chờ xác nhận", "Đã xác nhận", "Đang chuẩn bị", "Đang giao"];
 
 async function layChiTietSanPham(req, res) {
   const maSanPham = String(req.params.maSanPham || "").trim();

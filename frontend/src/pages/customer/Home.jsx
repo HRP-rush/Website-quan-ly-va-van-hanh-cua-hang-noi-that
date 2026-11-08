@@ -1,5 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Leaf, Armchair, HandHeart, ArrowUpRight } from "lucide-react";
 
 import Header from "../../components/Header";
@@ -54,11 +55,28 @@ const benefits = [
 ];
 
 export default function Home() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setSearch(params.get("tuKhoa") || "");
+    setCategory(params.get("danhMuc") || "");
+
+    const section = location.hash.slice(1);
+    if (section) {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          document.getElementById(section)?.scrollIntoView({ behavior: "smooth" });
+        });
+      });
+    }
+  }, [location.search, location.hash]);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +117,7 @@ export default function Home() {
   const selectCategory = (value) => {
     setCategory(value);
     setSearch("");
+    navigate(`/?danhMuc=${encodeURIComponent(value)}#products`);
     document.getElementById("products")?.scrollIntoView({
       behavior: "smooth"
     });
@@ -107,6 +126,7 @@ export default function Home() {
   const resetFilters = () => {
     setSearch("");
     setCategory("");
+    navigate("/#products");
   };
 
   return (
@@ -115,6 +135,9 @@ export default function Home() {
         onSearch={(value) => {
           setSearch(value);
           setCategory("");
+          navigate(value
+            ? `/?tuKhoa=${encodeURIComponent(value)}#products`
+            : "/#products");
         }}
         onCategoryChange={selectCategory}
       />

@@ -1,19 +1,46 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, ShoppingBag, Menu, X } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import AccountMenu from "./AccountMenu";
+import { getCart } from "../services/cartService";
 
 export default function Header({ onSearch, onCategoryChange }) {
+  const navigate = useNavigate();
   const [keyword, setKeyword] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    const updateCount = (event) => {
+      if (typeof event.detail?.count === "number") setCartCount(event.detail.count);
+    };
+    window.addEventListener("mocan-cart-change", updateCount);
+    getCart().then((items) => {
+      if (active) setCartCount(items.reduce((sum, item) => sum + Number(item.SoLuong || 0), 0));
+    }).catch(() => {
+      if (active) setCartCount(0);
+    });
+    return () => {
+      active = false;
+      window.removeEventListener("mocan-cart-change", updateCount);
+    };
+  }, []);
 
   function handleSearch(e) {
     e.preventDefault();
-    onSearch(keyword.trim());
-
-    document.getElementById("products")?.scrollIntoView({
-      behavior: "smooth"
+    const value = keyword.trim();
+    if (typeof onSearch === "function") {
+      onSearch(value);
+    } else {
+      navigate(`/?tuKhoa=${encodeURIComponent(value)}#products`);
+    }
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById("products")?.scrollIntoView({ behavior: "smooth" });
+      });
     });
   }
 
@@ -24,10 +51,10 @@ export default function Header({ onSearch, onCategoryChange }) {
       </div>
 
       <div className="header-main container">
-        <a href="/" className="brand" aria-label="Mộc An Interior">
+        <Link to="/" className="brand" aria-label="Mộc An Interior">
           <span className="brand-name">MỘC AN</span>
           <span className="brand-subtitle">INTERIOR</span>
-        </a>
+        </Link>
 
         <form className="header-search" onSubmit={handleSearch}>
           <Search size={18} strokeWidth={1.5} />
@@ -46,10 +73,10 @@ export default function Header({ onSearch, onCategoryChange }) {
         <div className="header-actions">
           <AccountMenu />
           
-          <a href="/gio-hang" className="header-action">
+          <Link to="/gio-hang" className="header-action" aria-label={`Mở giỏ hàng, ${cartCount} sản phẩm`}>
             <ShoppingBag size={19} strokeWidth={1.5} />
-            <span>Giỏ hàng</span>
-          </a>
+            <span>Giỏ hàng{cartCount > 0 ? ` (${cartCount})` : ""}</span>
+          </Link>
         </div>
 
 

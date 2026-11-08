@@ -1,5 +1,8 @@
 
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ShoppingCart } from "lucide-react";
+import { addProductToCart } from "../services/cartService";
 
 const formatPrice = (price) => {
   if (price === null || price === undefined || price === "") {
@@ -18,15 +21,41 @@ const formatPrice = (price) => {
 
 export default function ProductCard({ product }) {
   const [imageFailed, setImageFailed] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const navigate = useNavigate();
 
   const image = product.image || "/images/placeholder-product.jpg";
+  const canAdd = Boolean(product.variantId) && Number(product.stock) > 0;
 
   const stockText =
-    product.stock === null || product.stock === undefined
+    !product.variantId
+      ? "Chưa có biến thể bán hàng"
+      : product.stock === null || product.stock === undefined
       ? "Liên hệ để kiểm tra hàng"
       : product.stock > 0
         ? "Còn sản phẩm"
         : "Tạm hết hàng";
+
+  async function handleAddToCart() {
+    setFeedback(null);
+    setAdding(true);
+    try {
+      await addProductToCart(product);
+      setFeedback({ type: "success", message: "Đã thêm sản phẩm vào giỏ hàng." });
+    } catch (error) {
+      if (error.status === 401) {
+        navigate("/dang-nhap", {
+          state: { message: "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng." }
+        });
+        return;
+      }
+
+      setFeedback({ type: "error", message: error.message || "Không thể thêm sản phẩm vào giỏ hàng." });
+    } finally {
+      setAdding(false);
+    }
+  }
 
   return (
     <article className="product-card">
@@ -37,7 +66,7 @@ export default function ProductCard({ product }) {
           </div>
         ) : (
           <img
-            src={product.image}
+            src={image}
             alt={product.name}
             loading="lazy"
             onError={() => setImageFailed(true)}
@@ -66,6 +95,29 @@ export default function ProductCard({ product }) {
           <span className="stock-dot" />
           {stockText}
         </p>
+
+        <button
+          className="product-add-button"
+          type="button"
+          onClick={handleAddToCart}
+          disabled={!canAdd || adding}
+        >
+          <ShoppingCart size={15} aria-hidden="true" />
+          {adding
+            ? "Đang thêm..."
+            : !canAdd
+              ? !product.variantId
+                ? "Chưa có biến thể"
+                : "Hết hàng"
+              : "Thêm vào giỏ hàng"}
+        </button>
+
+        {feedback && (
+          <p className={`product-cart-feedback is-${feedback.type}`} role="status">
+            {feedback.message}
+            {feedback.type === "success" && <> <Link to="/gio-hang">Xem giỏ hàng</Link></>}
+          </p>
+        )}
       </div>
     </article>
   );

@@ -1,4 +1,6 @@
 
+import { Link, useLocation, useNavigate } from "react-router-dom";
+
 const menus = [
   { label: "Trang chủ", href: "#home" },
   { label: "Sản phẩm", href: "#products" },
@@ -14,13 +16,33 @@ export default function Navbar({
   closeMobile,
   onCategoryChange
 }) {
-  function selectCategory(category) {
-    onCategoryChange(category);
-    closeMobile();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    document.getElementById("products")?.scrollIntoView({
-      behavior: "smooth"
+  function scrollToSection(section) {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById(section)?.scrollIntoView({ behavior: "smooth" });
+      });
     });
+  }
+
+  function selectSection(event, href) {
+    event.preventDefault();
+    closeMobile?.();
+    const section = href.slice(1);
+    navigate(`/${href}`);
+    scrollToSection(section);
+  }
+
+  function selectCategory(category) {
+    closeMobile?.();
+    if (location.pathname === "/" && typeof onCategoryChange === "function") {
+      onCategoryChange(category);
+    } else {
+      navigate(`/?danhMuc=${encodeURIComponent(category)}#products`);
+    }
+    scrollToSection("products");
   }
 
   return (
@@ -38,21 +60,21 @@ export default function Navbar({
                 {item.label}
               </button>
             ) : (
-              <a
+              <Link
                 key={item.label}
-                href={item.href}
+                to={`/${item.href}`}
                 className="nav-link"
-                onClick={closeMobile}
+                onClick={(event) => selectSection(event, item.href)}
               >
                 {item.label}
-              </a>
+              </Link>
             )
           )}
         </div>
 
-        <a href="#consultation" className="navbar-consult">
+        <Link to="/#consultation" className="navbar-consult" onClick={(event) => selectSection(event, "#consultation")}>
           Tư vấn không gian ↗
-        </a>
+        </Link>
       </div>
     </nav>
   );
