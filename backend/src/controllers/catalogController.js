@@ -40,17 +40,67 @@ const base = `
   ) variant
   WHERE sp.TrangThai = N'Đang bán'
     AND dm.HienThi = 1`;
-async function danhSach(req,res){
- try {
-  const pool=await getPool();
-  const rs=await pool.request().query(`
-   SELECT sp.MaSanPham,sp.TenSanPham,sp.MoTaNgan,sp.MoTa,sp.PhongCach,
-   sp.ChatLieuChinh,sp.TrangThai,dm.TenDanhMuc,sp.MaDanhMuc,
-   COALESCE(sp.GiaCoBan,tong.GiaMin) AS GiaBan,tong.Ton AS SoLuongTon,
-   anh.DuongDan AS DuongDanAnh,variant.MaBienThe,variant.SKU
-   ${base} ORDER BY sp.NgayTao DESC,sp.MaSanPham ASC`);
-  res.json({success:true,data:rs.recordset,total:rs.recordset.length});
- }catch(e){console.error('Catalog list:',e.message);res.status(500).json({success:false,message:'Không tải được sản phẩm công khai. Kiểm tra cấu trúc bảng và kết nối SQL Server.'});}
+async function danhSach(req, res) {
+  const limit =
+    req.query.gioiHan == null
+      ? null
+      : Number(req.query.gioiHan);
+
+  if (
+    limit !== null &&
+    (
+      !Number.isSafeInteger(limit) ||
+      limit < 1 ||
+      limit > 100
+    )
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Giới hạn sản phẩm phải là số nguyên từ 1 đến 100."
+    });
+  }
+
+  try {
+    const pool = await getPool();
+    const request = pool.request();
+
+    if (limit !== null) {
+      request.input("gioiHan", sql.Int, limit);
+    }
+
+    const rs = await request.query(`
+      SELECT ${limit !== null ? "TOP (@gioiHan)" : ""}
+        sp.MaSanPham,
+        sp.TenSanPham,
+        sp.MoTaNgan,
+        sp.MoTa,
+        sp.PhongCach,
+        sp.ChatLieuChinh,
+        sp.TrangThai,
+        dm.TenDanhMuc,
+        sp.MaDanhMuc,
+        COALESCE(sp.GiaCoBan, tong.GiaMin) AS GiaBan,
+        tong.Ton AS SoLuongTon,
+        anh.DuongDan AS DuongDanAnh,
+        variant.MaBienThe,
+        variant.SKU
+      ${base}
+      ORDER BY sp.NgayTao DESC, sp.MaSanPham ASC
+    `);
+
+    return res.json({
+      success: true,
+      data: rs.recordset,
+      total: rs.recordset.length
+    });
+  } catch (e) {
+    console.error("Catalog list:", e.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Không tải được sản phẩm. Vui lòng thử lại."
+    });
+  }
 }
 async function chiTiet(req,res){
  const id=String(req.params.maSanPham||'').trim();

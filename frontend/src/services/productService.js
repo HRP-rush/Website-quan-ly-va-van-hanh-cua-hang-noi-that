@@ -1,5 +1,5 @@
-const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
-
+const API_URL = (import.meta.env.VITE_API_URL || "")
+  .replace(/\/$/, "");
 function imageUrl(path) {
   if (!path) return "/images/placeholder-product.jpg";
   if (/^https?:\/\//i.test(path) || path.startsWith("/images/")) return path;
@@ -41,33 +41,72 @@ function normalize(product) {
   };
 }
 
-async function request(path) {
+async function request(path, { signal } = {}) {
   let response;
+
   try {
-    response = await fetch(`${API_URL}${path}`, { credentials: "include" });
+    response = await fetch(`${API_URL}${path}`, {
+      credentials: "include",
+      signal
+    });
   } catch {
-    throw new Error(`Không thể kết nối máy chủ sản phẩm tại ${API_URL}.`);
+    if (signal?.aborted) {
+      throw new DOMException(
+        "Đã hủy yêu cầu.",
+        "AbortError"
+      );
+    }
+
+    throw new Error(
+      "Không thể kết nối máy chủ sản phẩm. Vui lòng thử lại."
+    );
   }
 
   let result;
+
   try {
     result = await response.json();
   } catch {
-    throw new Error(`API sản phẩm không trả JSON hợp lệ (HTTP ${response.status}).`);
+    throw new Error(
+      `API sản phẩm không trả JSON hợp lệ (HTTP ${response.status}).`
+    );
   }
 
   if (!response.ok || !result?.success) {
-    throw new Error(result?.message || "Không thể tải dữ liệu sản phẩm.");
+    throw new Error(
+      result?.message || "Không thể tải dữ liệu sản phẩm."
+    );
   }
+
   if (!Array.isArray(result.data) && !result.data) {
-    throw new Error("API sản phẩm trả dữ liệu không đúng định dạng.");
+    throw new Error(
+      "API sản phẩm trả dữ liệu không đúng định dạng."
+    );
   }
+
   return result.data;
 }
 
-export async function getProducts() {
-  const products = await request("/api/san-pham");
-  if (!Array.isArray(products)) throw new Error("API sản phẩm không trả danh sách hợp lệ.");
+export async function getProducts({
+  limit,
+  signal
+} = {}) {
+  const query =
+    limit == null
+      ? ""
+      : `?gioiHan=${encodeURIComponent(limit)}`;
+
+  const products = await request(
+    `/api/san-pham${query}`,
+    { signal }
+  );
+
+  if (!Array.isArray(products)) {
+    throw new Error(
+      "API sản phẩm không trả danh sách hợp lệ."
+    );
+  }
+
   return products.map(normalize);
 }
 

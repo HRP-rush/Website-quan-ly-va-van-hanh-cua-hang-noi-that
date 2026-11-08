@@ -18,9 +18,6 @@ import NhaCungCap from "./pages/management/NhaCungCap";
 import Catalog from "./pages/customer/Catalog";
 import ProductDetail from "./pages/customer/ProductDetail";
 import Cart from "./pages/customer/Cart";
-import ThongTinGiaoHang from "./pages/customer/ThongTinGiaoHang";
-import PhuongThucThanhToan from "./pages/customer/PhuongThucThanhToan";
-import XacNhanDonHang from "./pages/customer/XacNhanDonHang";
 import ThanhToanThanhCong from "./pages/customer/ThanhToanThanhCong";
 import TheoDoiDonHang, { DanhSachDonHang } from "./pages/customer/TheoDoiDonHang";
 import QuanLyDanhMuc from "./pages/management/QuanLyDanhMuc";
@@ -28,6 +25,7 @@ import ThemDanhMuc from "./pages/management/ThemDanhMuc";
 import DanhSachPhieuNhap from "./pages/management/DanhSachPhieuNhap";
 import TaoPhieuNhap from "./pages/management/TaoPhieuNhap";
 import TaoPhieuNhapNhanVien from "./pages/employee/TaoPhieuNhapNhanVien";
+import ThanhToan from "./pages/customer/ThanhToan";
 
 export default function App() {
   return <BrowserRouter>
@@ -36,15 +34,13 @@ export default function App() {
       <Route path="/" element={<Home/>}/>
       <Route path="/san-pham" element={<Catalog/>}/>
       <Route path="/san-pham/:maSanPham" element={<ProductDetail/>}/>
-      <Route path="/gio-hang" element={<Cart/>}/>
+      <Route path="/gio-hang" element={<RoleGate allow={["Khách hàng"]}>{() => <Cart />}</RoleGate>}/>
       <Route path="/dang-nhap" element={<Login/>}/>
       <Route path="/dang-ky" element={<Register/>}/>
-      <Route path="/thanh-toan/giao-hang" element={<RoleGate allow={["Khách hàng"]}>
-        {() => <ThongTinGiaoHang/>}</RoleGate>}/>
-      <Route path="/thanh-toan/phuong-thuc" element={<RoleGate allow={["Khách hàng"]}>
-        {() => <PhuongThucThanhToan/>}</RoleGate>}/>
-      <Route path="/thanh-toan/xac-nhan" element={<RoleGate allow={["Khách hàng"]}>
-        {() => <XacNhanDonHang/>}</RoleGate>}/>
+      <Route path="/thanh-toan" element={<RoleGate allow={["Khách hàng"]}>{(user) => <ThanhToan user={user} />}</RoleGate>}/>
+      <Route path="/thanh-toan/giao-hang" element={<Navigate to="/thanh-toan" replace />}/>
+      <Route path="/thanh-toan/phuong-thuc" element={<Navigate to="/thanh-toan" replace />}/>
+      <Route path="/thanh-toan/xac-nhan" element={<Navigate to="/thanh-toan" replace />}/>
       <Route path="/thanh-toan/thanh-cong" element={<RoleGate allow={["Khách hàng"]}>
         {() => <ThanhToanThanhCong/>}</RoleGate>}/>
       {/* Route được bảo vệ; Backend cũng phải kiểm tra quyền ở API nghiệp vụ. */}
