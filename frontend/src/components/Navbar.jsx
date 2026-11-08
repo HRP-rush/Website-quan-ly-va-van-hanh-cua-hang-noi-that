@@ -1,59 +1,76 @@
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const menus = [
-  { label: "Trang chủ", href: "/#home" },
+  { label: "Trang chủ", href: "/#home", section: "home" },
   { label: "Sản phẩm", href: "/san-pham" },
   { label: "Phòng khách", category: "Phòng khách" },
   { label: "Phòng ngủ", category: "Phòng ngủ" },
   { label: "Phòng ăn", category: "Phòng ăn" },
-  { label: "Bộ sưu tập", href: "/#inspiration" },
-  { label: "Về chúng tôi", href: "/#story" }
+  { label: "Bộ sưu tập", href: "/#inspiration", section: "inspiration" },
+  { label: "Về chúng tôi", href: "/#story", section: "story" }
 ];
 
-export default function Navbar({
-  mobileOpen,
-  closeMobile,
-  onCategoryChange
-}) {
-  function selectCategory(category) {
-    if (typeof onCategoryChange === "function") onCategoryChange(category);
-    else window.location.assign(`/san-pham?danh-muc=${encodeURIComponent(category)}`);
-    closeMobile();
+export default function Navbar({ mobileOpen, closeMobile, onCategoryChange }) {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    document.getElementById("products")?.scrollIntoView({
-      behavior: "smooth"
+  function scrollToSection(section) {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById(section)?.scrollIntoView({ behavior: "smooth" });
+      });
     });
+  }
+
+  function openSection(event, section) {
+    event.preventDefault();
+    closeMobile?.();
+    navigate(`/#${section}`);
+    scrollToSection(section);
+  }
+
+  function selectCategory(category) {
+    closeMobile?.();
+    if (["/", "/san-pham"].includes(location.pathname) && typeof onCategoryChange === "function") {
+      onCategoryChange(category);
+    } else {
+      navigate(`/san-pham?danh-muc=${encodeURIComponent(category)}`);
+    }
   }
 
   return (
     <nav className={`navbar ${mobileOpen ? "navbar-open" : ""}`}>
       <div className="container navbar-inner">
         <div className="navbar-links">
-          {menus.map((item) =>
-            item.category ? (
-              <button
-                key={item.label}
-                type="button"
-                className="nav-link"
-                onClick={() => selectCategory(item.category)}
-              >
-                {item.label}
-              </button>
-            ) : (
-              <a
-                key={item.label}
-                href={item.href}
-                className="nav-link"
-                onClick={closeMobile}
-              >
-                {item.label}
-              </a>
-            )
-          )}
+          {menus.map((item) => item.category ? (
+            <button
+              key={item.label}
+              type="button"
+              className="nav-link"
+              onClick={() => selectCategory(item.category)}
+            >
+              {item.label}
+            </button>
+          ) : (
+            <Link
+              key={item.label}
+              to={item.href}
+              className="nav-link"
+              onClick={item.section
+                ? (event) => openSection(event, item.section)
+                : closeMobile}
+            >
+              {item.label}
+            </Link>
+          ))}
         </div>
-
-        <a href="#consultation" className="navbar-consult">
+        <Link
+          to="/#consultation"
+          className="navbar-consult"
+          onClick={(event) => openSection(event, "consultation")}
+        >
           Tư vấn không gian ↗
-        </a>
+        </Link>
       </div>
     </nav>
   );

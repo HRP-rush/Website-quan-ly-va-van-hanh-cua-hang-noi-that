@@ -7,7 +7,7 @@ import {
   ChevronDown,
   LogIn,
   UserPlus,
-  CircleUserRound,
+  ClipboardList,
   LayoutDashboard,
   LogOut
 } from "lucide-react";
@@ -147,22 +147,24 @@ export default function AccountMenu() {
               </div>
 
               <Link
-                to="/tai-khoan"
+                to="/tai-khoan/don-hang"
                 className="account-dropdown-item"
                 onClick={closeMenu}
               >
-                <CircleUserRound size={17} />
-                Thông tin cá nhân
+                <ClipboardList size={17} />
+                Đơn hàng của tôi
               </Link>
 
-              <Link
-                to={getRolePath(user.TenVaiTro)}
-                className="account-dropdown-item"
-                onClick={closeMenu}
-              >
-                <LayoutDashboard size={17} />
-                Trang làm việc
-              </Link>
+              {user.TenVaiTro !== "Khách hàng" && (
+                <Link
+                  to={getRolePath(user.TenVaiTro)}
+                  className="account-dropdown-item"
+                  onClick={closeMenu}
+                >
+                  <LayoutDashboard size={17} />
+                  Trang làm việc
+                </Link>
+              )}
 
               <button
                 type="button"

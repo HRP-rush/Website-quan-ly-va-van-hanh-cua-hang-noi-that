@@ -30,7 +30,7 @@ export default function Login() {
     finally { setLoading(false); }
   }
   return <>
-    <Header onSearch={() => {}} onCategoryChange={() => {}}/>
+    <Header />
     <main className="login-page"><div className="container login-layout">
       <div className="login-image"><img src="/images/hero.jpg" alt="Không gian phòng khách Mộc An"/></div>
       <div className="login-content"><p className="eyebrow">KHÔNG GIAN RIÊNG CỦA BẠN</p>
@@ -47,7 +47,7 @@ export default function Login() {
               <button type="button" onClick={()=>setShowPassword(v=>!v)} aria-label={showPassword?"Ẩn mật khẩu":"Hiện mật khẩu"}>
                 {showPassword?<EyeOff size={19}/>:<Eye size={19}/>}</button></div></div>
           <div className="login-options"><label className="remember-me"><input type="checkbox" checked={ghiNho} onChange={e=>setGhiNho(e.target.checked)}/> Ghi nhớ đăng nhập</label>
-            <span title="Chức năng khôi phục mật khẩu sẽ phát triển sau">Quên mật khẩu? Vui lòng liên hệ quản lý</span></div>
+            <a href="mailto:hello@mocan.vn?subject=Y%C3%AAu%20c%E1%BA%A7u%20%C4%91%E1%BA%B7t%20l%E1%BA%A1i%20m%E1%BA%ADt%20kh%E1%BA%A9u">Quên mật khẩu?</a></div>
           {error && <div className="login-error" role="alert">{error}</div>}
           <button type="submit" className="login-submit" disabled={loading}>{loading?"Đang đăng nhập...":"Đăng nhập"}</button>
           <p className="login-register">Chưa có tài khoản? <Link to="/dang-ky">Đăng ký ngay</Link></p>
