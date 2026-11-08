@@ -1,0 +1,257 @@
+/* Bổ sung cho trang danh sách danh mục */
+
+.dm-list .dm-list-filters {
+  grid-template-columns: minmax(220px, 380px);
+}
+
+.dm-list .workspace-table {
+  min-width: 900px;
+}
+
+.dm-list .workspace-table .dm-name-cell {
+  white-space: normal;
+  min-width: 140px;
+  max-width: 220px;
+  overflow-wrap: anywhere;
+}
+
+.dm-list .workspace-table .dm-description-cell {
+  white-space: pre-wrap;
+  min-width: 180px;
+  max-width: 380px;
+  overflow-wrap: anywhere;
+}
+
+.dm-no-image {
+  display: flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  background: var(--w-side);
+  color: #9a938b;
+}
+
+.dm-list .dsp-actions button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.dm-result-count {
+  flex-wrap: wrap;
+}
+
+.dm-result-count select {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--w-border);
+  border-radius: 4px;
+  padding: 6px;
+}
+
+.dm-success {
+  background: #e9f3ee;
+  color: #3f7a5c;
+  border-radius: 6px;
+  font-size: 12px;
+  padding: 12px 16px;
+  margin: 20px 0 0;
+}
+
+/* Bổ sung cho trang thêm / chỉnh sửa danh mục */
+
+.dm-editor-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.dm-editor .workspace-panel[id] {
+  scroll-margin-top: 24px;
+}
+
+.dm-editor .sp-field input[readonly] {
+  background: #f8f6f2;
+  color: #8e857c;
+}
+
+.dm-editor .sp-field [aria-invalid=true] {
+  border-color: #b33a3a;
+}
+
+.dm-editor .sp-main-image {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.dm-editor .sp-main-preview {
+  max-width: 100%;
+}
+
+.dm-image-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.dm-image-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.dm-image-info .sp-filename {
+  overflow-wrap: anywhere;
+}
+
+.dm-image-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.dm-image-buttons .sp-btn {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.dm-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.dm-related-number {
+  font: 36px/1.2 "Playfair Display", Georgia, serif;
+  margin: 0 0 16px;
+}
+
+.dm-editor .sp-footer .sp-btn {
+  margin-top: 0;
+}
+
+.dm-editor button:focus-visible,
+.dm-list button:focus-visible,
+.dm-detail-dialog button:focus-visible {
+  outline: 2px solid #a57a52;
+  outline-offset: 3px;
+}
+
+/* Hộp chi tiết: căn giữa, tránh bị dạt lên góc trái */
+
+.dm-detail-dialog {
+  --w-green: #31352f;
+  --w-border: #e6dcd0;
+
+  position: fixed;
+  inset: 0;
+  margin: auto;
+
+  width: min(540px, calc(100% - 32px));
+  max-height: 85vh;
+  overflow: auto;
+  box-sizing: border-box;
+
+  padding: 26px;
+  border: 1px solid #e6dcd0;
+  border-radius: 8px;
+
+  background: #fff;
+  color: #292d28;
+  font: 12px/1.8 "Be Vietnam Pro", sans-serif;
+  box-shadow: 0 20px 80px #292d2826;
+}
+
+.dm-detail-dialog::backdrop {
+  background: #292d2866;
+}
+
+.dm-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dm-detail-head h2 {
+  font: 28px/1.4 "Playfair Display", Georgia, serif;
+  margin: 0;
+}
+
+.dm-detail-head button {
+  border: 0;
+  background: none;
+  color: #817b72;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+}
+
+.dm-detail-code {
+  font-size: 11px;
+  color: #817b72;
+  margin: 10px 0 20px;
+}
+
+.dm-detail-image {
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
+.dm-detail-dialog h3 {
+  font: 24px/1.5 "Playfair Display", Georgia, serif;
+  margin: 16px 0;
+}
+
+.dm-detail-description {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #817b72;
+}
+
+.dm-detail-summary {
+  margin-top: 16px;
+}
+
+.dm-detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+@media (max-width: 1200px) {
+  .dm-category-image {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 600px) {
+  .dm-list .dm-list-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .dm-list .dsp-pager {
+    flex-wrap: wrap;
+  }
+
+  .dm-category-image .sp-main-preview {
+    width: 100%;
+    flex-basis: auto;
+    height: 220px;
+  }
+
+  .dm-detail-dialog {
+    padding: 20px;
+  }
+}

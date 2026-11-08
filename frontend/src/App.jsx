@@ -5,7 +5,7 @@ import Register from "./pages/customer/Register";
 import RoleGate from "./components/RoleGate";
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 import ManagementDashboard from "./pages/management/ManagementDashboard";
-import ThemSanPham from "./pages/management/themSanPham";
+import ThemSanPham from "./pages/management/ThemSanPham";
 import DanhSachSanPham from "./pages/management/DanhSachSanPham";
 import ChiTietSanPham from "./pages/management/ChiTietSanPham";
 import ChinhSuaSanPham from "./pages/management/ChinhSuaSanPham";
@@ -20,6 +20,8 @@ import PhuongThucThanhToan from "./pages/customer/PhuongThucThanhToan";
 import XacNhanDonHang from "./pages/customer/XacNhanDonHang";
 import ThanhToanThanhCong from "./pages/customer/ThanhToanThanhCong";
 import TheoDoiDonHang, { DanhSachDonHang } from "./pages/customer/TheoDoiDonHang";
+import QuanLyDanhMuc from "./pages/management/QuanLyDanhMuc";
+import ThemDanhMuc from "./pages/management/ThemDanhMuc";
 
 export default function App() {
   return <BrowserRouter>
@@ -81,6 +83,18 @@ export default function App() {
         {(user) => <ChiTietTonKho user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/admin/kho-hang/:maBienThe" element={<RoleGate allow={["Admin"]}>
         {(user) => <ChiTietTonKho user={user} mode="admin"/>}</RoleGate>}/>
+      <Route path="/quan-ly/danh-muc" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => (<QuanLyDanhMuc user={user} mode="manager"/>)}</RoleGate>}/>
+      <Route path="/admin/danh-muc" element={<RoleGate allow={["Admin"]}>
+        {(user) => (<QuanLyDanhMuc user={user} mode="admin"/>)}</RoleGate>}/>
+        <Route path="/quan-ly/danh-muc/them" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => (<ThemDanhMuc user={user} mode="manager"/>)}</RoleGate>}/>
+      <Route path="/quan-ly/danh-muc/:maDanhMuc/chinh-sua" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => (<ThemDanhMuc user={user} mode="manager"/>)}</RoleGate>}/>
+      <Route path="/admin/danh-muc/them" element={<RoleGate allow={["Admin"]}>
+        {(user) => (<ThemDanhMuc user={user} mode="admin"/>)}</RoleGate>}/>
+      <Route path="/admin/danh-muc/:maDanhMuc/chinh-sua" element={<RoleGate allow={["Admin"]}>
+        {(user) => (<ThemDanhMuc user={user}mode="admin"/>)}</RoleGate>}/>
       <Route path="*" element={<Navigate to="/" replace/>}/>
     </Routes>
   </BrowserRouter>;
