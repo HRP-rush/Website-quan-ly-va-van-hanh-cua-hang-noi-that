@@ -23,6 +23,8 @@ import ThanhToanThanhCong from "./pages/customer/ThanhToanThanhCong";
 import TheoDoiDonHang, { DanhSachDonHang } from "./pages/customer/TheoDoiDonHang";
 import QuanLyDanhMuc from "./pages/management/QuanLyDanhMuc";
 import ThemDanhMuc from "./pages/management/ThemDanhMuc";
+import DanhSachPhieuNhap from "./pages/management/DanhSachPhieuNhap";
+import TaoPhieuNhap from "./pages/management/TaoPhieuNhap";
 
 export default function App() {
   return <BrowserRouter>
@@ -100,6 +102,18 @@ export default function App() {
         {(user) => (<ThemDanhMuc user={user} mode="admin"/>)}</RoleGate>}/>
       <Route path="/admin/danh-muc/:maDanhMuc/chinh-sua" element={<RoleGate allow={["Admin"]}>
         {(user) => (<ThemDanhMuc user={user}mode="admin"/>)}</RoleGate>}/>
+      <Route path="/quan-ly/phieu-nhap" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => <DanhSachPhieuNhap user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/admin/phieu-nhap" element={<RoleGate allow={["Admin"]}>
+        {(user) => <DanhSachPhieuNhap user={user} mode="admin"/>}</RoleGate>}/>
+      <Route path="/quan-ly/phieu-nhap/tao" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => <TaoPhieuNhap user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/quan-ly/phieu-nhap/:maPhieuNhap/sua" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => <TaoPhieuNhap user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/admin/phieu-nhap/tao" element={<RoleGate allow={["Admin"]}>
+        {(user) => <TaoPhieuNhap user={user} mode="admin"/>}</RoleGate>}/>
+      <Route path="/admin/phieu-nhap/:maPhieuNhap/sua" element={<RoleGate allow={["Admin"]}>
+        {(user) => <TaoPhieuNhap user={user} mode="admin"/>}</RoleGate>}/>
       <Route path="*" element={<Navigate to="/" replace/>}/>
     </Routes>
   </BrowserRouter>;
