@@ -1,15 +1,18 @@
-
-import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Leaf, Armchair, HandHeart, ArrowUpRight } from "lucide-react";
+import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  Leaf,
+  Armchair,
+  HandHeart,
+  ArrowUpRight
+} from "lucide-react";
 
 import Header from "../../components/Header";
-import "../../styles/catalog.css";
 import HeroBanner from "../../components/HeroBanner";
-import ProductCard from "../../components/ProductCard";
+import HomeProducts from "../../components/HomeProducts";
 import Footer from "../../components/Footer";
 
-import { getProducts } from "../../services/productService";
+import "../../styles/catalog.css";
 
 const categories = [
   {
@@ -58,101 +61,92 @@ const benefits = [
 export default function Home() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    setSearch(params.get("tuKhoa") || "");
-    setCategory(params.get("danhMuc") || "");
+    const q = params.get("tuKhoa");
+    const category = params.get("danhMuc");
+
+    // Chuyển đường dẫn tìm kiếm/danh mục cũ sang trang sản phẩm.
+    if (q || category) {
+      const next = new URLSearchParams();
+
+      if (q) {
+        next.set("q", q);
+      }
+
+      if (category) {
+        next.set("danh-muc", category);
+      }
+
+      navigate(`/san-pham?${next}`, {
+        replace: true
+      });
+
+      return;
+    }
 
     const section = location.hash.slice(1);
-    if (section) {
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          document.getElementById(section)?.scrollIntoView({ behavior: "smooth" });
+
+    if (!section) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      document
+        .getElementById(section)
+        ?.scrollIntoView({
+          behavior: "smooth"
         });
-      });
-    }
-  }, [location.search, location.hash]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    getProducts()
-      .then((data) => {
-        if (!cancelled) setProducts(data);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    });
 
     return () => {
-      cancelled = true;
+      window.cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [location.search, location.hash, navigate]);
 
-  const filteredProducts = useMemo(() => {
-    return products.filter((item) => {
-      const q = search.toLocaleLowerCase("vi-VN");
-
-      const matchSearch =
-        !q ||
-        `${item.name} ${item.description || ""} ${item.category}`
-          .toLocaleLowerCase("vi-VN")
-          .includes(q);
-
-      const matchCategory =
-        !category || item.category === category;
-
-      return matchSearch && matchCategory;
+  const selectCategory = value => {
+    const params = new URLSearchParams({
+      "danh-muc": value
     });
-  }, [products, search, category]);
 
-  const selectCategory = (value) => {
-    setCategory(value);
-    setSearch("");
-    navigate(`/?danhMuc=${encodeURIComponent(value)}#products`);
-    document.getElementById("products")?.scrollIntoView({
-      behavior: "smooth"
-    });
-  };
-
-  const resetFilters = () => {
-    setSearch("");
-    setCategory("");
-    navigate("/#products");
+    navigate(`/san-pham?${params}`);
   };
 
   return (
     <>
       <Header
-        onSearch={(value) => {
-          setSearch(value);
-          setCategory("");
-          navigate(value
-            ? `/?tuKhoa=${encodeURIComponent(value)}#products`
-            : "/#products");
+        onSearch={value => {
+          const keyword = value.trim();
+
+          navigate(
+            keyword
+              ? `/san-pham?${new URLSearchParams({
+                  q: keyword
+                })}`
+              : "/san-pham"
+          );
         }}
         onCategoryChange={selectCategory}
       />
 
       <main>
-        <div className="moc-visitor-hint container">Xem sản phẩm tự do · Đăng nhập khi muốn sử dụng giỏ hàng</div>
+        <div className="moc-visitor-hint container">
+          Khám phá nội thất cho không gian sống của bạn
+        </div>
+
         <HeroBanner />
 
         {/* DANH MỤC THEO KHÔNG GIAN */}
-        <section className="section categories-section" id="categories">
+        <section
+          className="section categories-section"
+          id="categories"
+        >
           <div className="container">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">MỘT NGÔI NHÀ, NHIỀU CẢM HỨNG</p>
+                <p className="eyebrow">
+                  MỘT NGÔI NHÀ, NHIỀU CẢM HỨNG
+                </p>
+
                 <h2>Khám phá theo không gian</h2>
               </div>
 
@@ -163,14 +157,18 @@ export default function Home() {
             </div>
 
             <div className="category-grid">
-              {categories.map((item) => (
+              {categories.map(item => (
                 <button
+                  type="button"
                   key={item.name}
                   className="category-card"
                   onClick={() => selectCategory(item.name)}
                 >
                   <div className="category-image">
-                    <img src={item.image} alt={item.name} />
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                    />
                   </div>
 
                   <div className="category-title-row">
@@ -185,69 +183,8 @@ export default function Home() {
           </div>
         </section>
 
-        {/* SẢN PHẨM NỔI BẬT */}
-        <section className="section products-section" id="products">
-          <div className="container">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">ĐƯỢC YÊU THÍCH TẠI MỘC AN</p>
-                <h2>
-                  {category
-                    ? `Nội thất ${category.toLocaleLowerCase("vi-VN")}`
-                    : search
-                      ? `Kết quả tìm kiếm: "${search}"`
-                      : "Những thiết kế dành cho bạn"}
-                </h2>
-              </div>
-
-              <button onClick={resetFilters} className="text-link">
-                Xem tất cả sản phẩm
-                <ArrowUpRight size={15} />
-              </button>
-            </div>
-
-            {loading && (
-              <p className="result-message">
-                Đang tải sản phẩm...
-              </p>
-            )}
-
-            {error && (
-              <div className="result-message error-message" role="alert">
-                Không thể tải danh sách sản phẩm: {error}
-              </div>
-            )}
-
-            {!loading && !error && filteredProducts.length === 0 && (
-              <div className="empty-products">
-                <h3>Chưa tìm thấy sản phẩm phù hợp</h3>
-                <p>
-                  Hãy thử lựa chọn danh mục hoặc từ khóa khác.
-                </p>
-                <button className="btn btn-outline" onClick={resetFilters}>
-                  Xem tất cả sản phẩm
-                </button>
-              </div>
-            )}
-
-            {!loading && !error && filteredProducts.length > 0 && (
-              <div className="product-grid">
-                {filteredProducts.slice(0, 8).map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                  />
-                ))}
-              </div>
-            )}
-
-            <div className="products-bottom">
-              <Link to="/san-pham" className="btn btn-outline">
-                Khám phá tất cả sản phẩm
-              </Link>
-            </div>
-          </div>
-        </section>
+        {/* LẤY TỐI ĐA 8 SẢN PHẨM TỪ DATABASE */}
+        <HomeProducts />
 
         {/* CÂU CHUYỆN CHẤT LIỆU */}
         <section className="material-story" id="story">
@@ -261,10 +198,14 @@ export default function Home() {
 
           <div className="material-content">
             <div className="material-content-inner">
-              <p className="eyebrow">ĐẸP TỪ NHỮNG ĐIỀU CHÂN THẬT</p>
+              <p className="eyebrow">
+                ĐẸP TỪ NHỮNG ĐIỀU CHÂN THẬT
+              </p>
+
               <h2>
                 Được tạo nên từ những chất liệu có giá trị
               </h2>
+
               <p>
                 Vân gỗ tự nhiên, bề mặt linen mềm mại và những
                 đường nét được chăm chút. Mỗi thiết kế Mộc An
@@ -272,7 +213,10 @@ export default function Home() {
                 của bạn.
               </p>
 
-              <a href="#inspiration" className="btn btn-outline">
+              <a
+                href="#inspiration"
+                className="btn btn-outline"
+              >
                 Câu chuyện chất liệu
               </a>
             </div>
@@ -282,12 +226,19 @@ export default function Home() {
         {/* GIÁ TRỊ THƯƠNG HIỆU */}
         <section className="benefits-section">
           <div className="container benefits-grid">
-            {benefits.map((item) => {
+            {benefits.map(item => {
               const Icon = item.icon;
 
               return (
-                <div className="benefit" key={item.title}>
-                  <Icon className="benefit-icon" size={26} strokeWidth={1.2} />
+                <div
+                  className="benefit"
+                  key={item.title}
+                >
+                  <Icon
+                    className="benefit-icon"
+                    size={26}
+                    strokeWidth={1.2}
+                  />
 
                   <div>
                     <h3>{item.title}</h3>
@@ -300,15 +251,24 @@ export default function Home() {
         </section>
 
         {/* CẢM HỨNG CHO TỪNG GÓC NHÀ */}
-        <section className="section inspiration-section" id="inspiration">
+        <section
+          className="section inspiration-section"
+          id="inspiration"
+        >
           <div className="container">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">SỐNG CHẬM, SỐNG CÓ GU</p>
+                <p className="eyebrow">
+                  SỐNG CHẬM, SỐNG CÓ GU
+                </p>
+
                 <h2>Cảm hứng cho từng góc nhà</h2>
               </div>
 
-              <a href="#consultation" className="text-link">
+              <a
+                href="#consultation"
+                className="text-link"
+              >
                 Ghé thăm góc cảm hứng
                 <ArrowUpRight size={15} />
               </a>
@@ -326,7 +286,10 @@ export default function Home() {
                   KHÔNG GIAN SỐNG / 5 PHÚT ĐỌC
                 </p>
 
-                <h3>Một khoảng lặng giữa nhịp sống thành thị</h3>
+                <h3>
+                  Một khoảng lặng giữa nhịp sống thành thị
+                </h3>
+
                 <p>
                   Khi ánh sáng, chất liệu và những đường nét
                   tối giản cùng kể câu chuyện về nhà.
@@ -340,7 +303,10 @@ export default function Home() {
                     alt="Không gian phòng ngủ ấm áp"
                     loading="lazy"
                   />
-                  <h3>Để phòng ngủ trở thành nơi bạn muốn trở về</h3>
+
+                  <h3>
+                    Để phòng ngủ trở thành nơi bạn muốn trở về
+                  </h3>
                 </div>
 
                 <div className="inspiration-small">
@@ -349,7 +315,10 @@ export default function Home() {
                     alt="Không gian phòng ăn hiện đại"
                     loading="lazy"
                   />
-                  <h3>Bàn ăn ấm áp, câu chuyện dài hơn</h3>
+
+                  <h3>
+                    Bàn ăn ấm áp, câu chuyện dài hơn
+                  </h3>
                 </div>
               </div>
             </div>
@@ -357,12 +326,19 @@ export default function Home() {
         </section>
 
         {/* CTA TƯ VẤN */}
-        <section className="consultation-section" id="consultation">
+        <section
+          className="consultation-section"
+          id="consultation"
+        >
           <div className="container consultation-inner">
             <div>
-              <h2>Tổ ấm của bạn, cùng Mộc An vun đắp.</h2>
+              <h2>
+                Tổ ấm của bạn, cùng Mộc An vun đắp.
+              </h2>
+
               <p>
-                Đội ngũ tư vấn luôn sẵn sàng lắng nghe ý tưởng của bạn.
+                Đội ngũ tư vấn luôn sẵn sàng
+                lắng nghe ý tưởng của bạn.
               </p>
             </div>
 
