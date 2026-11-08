@@ -26,19 +26,50 @@ const dbConfig = {
 };
 
 let poolPromise;
+let connectedPool;
 
 function getPool() {
+  // A SQL Server restart or a dropped TCP connection can leave the cached pool
+  // unusable. Discard it only after the driver marks it unhealthy; healthy pools
+  // can replace an individual broken connection themselves.
+  if (connectedPool && !connectedPool.healthy) {
+    const failedPool = connectedPool;
+    connectedPool = null;
+    poolPromise = null;
+    failedPool.close().catch((err) => {
+      console.error("Không thể đóng connection pool SQL lỗi:", err.message);
+    });
+  }
+
   if (!poolPromise) {
-    poolPromise = new sql.ConnectionPool(dbConfig)
-      .connect()
-      .then((pool) => {
+    const pool = new sql.ConnectionPool(dbConfig);
+    const connecting = pool.connect()
+      .then((readyPool) => {
+        connectedPool = readyPool;
+        readyPool.on("error", (err) => {
+          console.error(
+            `Lỗi connection pool SQL Server (${err.code || err.name}):`,
+            err.message
+          );
+
+          if (!readyPool.healthy && connectedPool === readyPool) {
+            connectedPool = null;
+            if (poolPromise === connecting) poolPromise = null;
+            readyPool.close().catch((closeError) => {
+              console.error("Không thể đóng connection pool SQL lỗi:", closeError.message);
+            });
+          }
+        });
+
         console.log("Đã kết nối SQL Server");
-        return pool;
+        return readyPool;
       })
       .catch((err) => {
-        poolPromise = null;
+        if (poolPromise === connecting) poolPromise = null;
         throw err;
       });
+
+    poolPromise = connecting;
   }
 
   return poolPromise;

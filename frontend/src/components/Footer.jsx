@@ -1,13 +1,15 @@
 
+import { Link } from "react-router-dom";
+
 export default function Footer() {
   return (
     <footer className="footer" id="footer">
       <div className="container">
         <div className="footer-grid">
           <div className="footer-brand">
-            <a href="/" className="footer-logo">
+            <Link to="/" className="footer-logo">
               MỘC AN
-            </a>
+            </Link>
 
             <p>
               Nội thất tinh giản. Giá trị bền lâu.
@@ -26,18 +28,18 @@ export default function Footer() {
 
           <div className="footer-column">
             <h4>Khám phá</h4>
-            <a href="#categories">Phòng khách</a>
-            <a href="#categories">Phòng ngủ</a>
-            <a href="#categories">Phòng ăn</a>
-            <a href="#products">Bộ sưu tập</a>
+            <Link to="/?danhMuc=Ph%C3%B2ng%20kh%C3%A1ch#products">Phòng khách</Link>
+            <Link to="/?danhMuc=Ph%C3%B2ng%20ng%E1%BB%A7#products">Phòng ngủ</Link>
+            <Link to="/?danhMuc=Ph%C3%B2ng%20%C4%83n#products">Phòng ăn</Link>
+            <Link to="/#inspiration">Bộ sưu tập</Link>
           </div>
 
           <div className="footer-column">
             <h4>Hỗ trợ khách hàng</h4>
-            <a href="#consultation">Hướng dẫn mua hàng</a>
-            <a href="#consultation">Giao hàng & lắp đặt</a>
-            <a href="#consultation">Chính sách bảo hành</a>
-            <a href="#consultation">Đổi trả & hoàn tiền</a>
+            <Link to="/#consultation">Hướng dẫn mua hàng</Link>
+            <Link to="/#consultation">Giao hàng & lắp đặt</Link>
+            <Link to="/#consultation">Chính sách bảo hành</Link>
+            <Link to="/#consultation">Đổi trả & hoàn tiền</Link>
           </div>
 
           <div className="footer-column">

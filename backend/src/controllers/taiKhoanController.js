@@ -51,7 +51,7 @@ async function dangNhap(req, res) {
     const pool = await getPool();
 
     const result = await pool.request()
-      .input("email", sql.VarChar(254), email.trim())
+      .input("email", sql.VarChar(254), email.trim().toLowerCase())
       .query(`
         SELECT
           nd.MaNguoiDung,

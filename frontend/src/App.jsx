@@ -14,6 +14,12 @@ import QuanLyTonKho from "./pages/management/QuanLyTonKho";
 import ChiTietTonKho from "./pages/management/ChiTietTonKho";
 import Catalog from "./pages/customer/Catalog";
 import ProductDetail from "./pages/customer/ProductDetail";
+import Cart from "./pages/customer/Cart";
+import ThongTinGiaoHang from "./pages/customer/ThongTinGiaoHang";
+import PhuongThucThanhToan from "./pages/customer/PhuongThucThanhToan";
+import XacNhanDonHang from "./pages/customer/XacNhanDonHang";
+import ThanhToanThanhCong from "./pages/customer/ThanhToanThanhCong";
+import TheoDoiDonHang, { DanhSachDonHang } from "./pages/customer/TheoDoiDonHang";
 
 export default function App() {
   return <BrowserRouter>
@@ -22,8 +28,17 @@ export default function App() {
       <Route path="/" element={<Home/>}/>
       <Route path="/san-pham" element={<Catalog/>}/>
       <Route path="/san-pham/:maSanPham" element={<ProductDetail/>}/>
+      <Route path="/gio-hang" element={<Cart/>}/>
       <Route path="/dang-nhap" element={<Login/>}/>
       <Route path="/dang-ky" element={<Register/>}/>
+      <Route path="/thanh-toan/giao-hang" element={<RoleGate allow={["Khách hàng"]}>
+        {() => <ThongTinGiaoHang/>}</RoleGate>}/>
+      <Route path="/thanh-toan/phuong-thuc" element={<RoleGate allow={["Khách hàng"]}>
+        {() => <PhuongThucThanhToan/>}</RoleGate>}/>
+      <Route path="/thanh-toan/xac-nhan" element={<RoleGate allow={["Khách hàng"]}>
+        {() => <XacNhanDonHang/>}</RoleGate>}/>
+      <Route path="/thanh-toan/thanh-cong" element={<RoleGate allow={["Khách hàng"]}>
+        {() => <ThanhToanThanhCong/>}</RoleGate>}/>
       {/* Route được bảo vệ; Backend cũng phải kiểm tra quyền ở API nghiệp vụ. */}
       <Route path="/nhan-vien" element={<RoleGate allow={["Nhân viên"]}>
         {(user) => <EmployeeDashboard user={user}/>}</RoleGate>}/>
@@ -33,7 +48,11 @@ export default function App() {
         {(user) => <ManagementDashboard user={user} mode="admin"/>}</RoleGate>}/>
       {/* Trang hồ sơ CUS-15 sẽ được xây dựng sau; tạm về trang chủ nếu có phiên khách */}
       <Route path="/tai-khoan" element={<RoleGate allow={["Khách hàng"]}>
-        {() => <Navigate to="/" replace/>}</RoleGate>}/>
+        {() => <Navigate to="/tai-khoan/don-hang" replace/>}</RoleGate>}/>
+      <Route path="/tai-khoan/don-hang" element={<RoleGate allow={["Khách hàng"]}>
+        {(user) => <DanhSachDonHang user={user}/>}</RoleGate>}/>
+      <Route path="/tai-khoan/don-hang/:id" element={<RoleGate allow={["Khách hàng"]}>
+        {() => <TheoDoiDonHang/>}</RoleGate>}/>
       <Route path="/quan-ly/san-pham/them" element={<RoleGate allow={["Quản lý"]}>
         {(user) => <ThemSanPham user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/admin-san-pham/them" element={<RoleGate allow={["Admin"]}>
