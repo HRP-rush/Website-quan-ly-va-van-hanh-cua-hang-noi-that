@@ -465,8 +465,12 @@ export default function Cart() {
                   <button
                     type="button"
                     className="cart-checkout-button"
-                    disabled={hasUnavailableItem}
-                    onClick={() => navigate("/thanh-toan/giao-hang")}
+                    disabled={
+                      hasUnavailableItem ||
+                      pendingId !== null ||
+                      savingIds.length > 0
+                    }
+                    onClick={() => navigate("/thanh-toan")}
                   >
                     {hasUnavailableItem ? "Vui lòng kiểm tra tồn kho" : "Tiến hành thanh toán"}
                   </button>
