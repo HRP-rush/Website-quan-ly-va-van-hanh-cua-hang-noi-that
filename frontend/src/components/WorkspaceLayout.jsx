@@ -19,7 +19,7 @@ const icons = {
 const staffNav = [
   { title: "Tổng quan", icon: "overview", path: "" },
   { title: "Đơn hàng", icon: "orders", path: "/don-hang" },
-  { title: "Giao hàng", icon: "delivery" },
+  { title: "Giao hàng", icon: "delivery", path: "/giao-hang" },
   { title: "Tồn kho", icon: "inventory", path: "/ton-kho" },
   { title: "Nhập kho", icon: "receipts", path: "/nhap-kho" },
   { title: "Lịch sử kho", icon: "history", path: "/lich-su-kho" }

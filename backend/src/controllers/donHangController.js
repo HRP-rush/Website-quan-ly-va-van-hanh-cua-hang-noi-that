@@ -430,6 +430,12 @@ async function capNhatTrangThaiDonHang(req, res) {
       }
     }
     if (trangThaiMoi === "Hoàn tất") {
+      const delivery = await new sql.Request(transaction)
+        .input("maDon", sql.Int, maDon)
+        .query("SELECT TrangThaiGiao FROM dbo.GiaoHang WITH (UPDLOCK, HOLDLOCK) WHERE MaDon = @maDon");
+      if (!delivery.recordset.length || delivery.recordset[0].TrangThaiGiao !== "Đang giao") {
+        throw loi(409, "Chỉ hoàn tất đơn khi phiếu giao đang ở trạng thái Đang giao.");
+      }
       // Đơn chỉ được hoàn tất từ "Đang giao" theo kiểm tra trạng thái phía trên.
       // Khóa đơn trong transaction SERIALIZABLE để hai yêu cầu song song không thể xuất kho hai lần.
       const chiTietResult = await new sql.Request(transaction)
@@ -502,10 +508,21 @@ async function capNhatTrangThaiDonHang(req, res) {
         .input("maDon", sql.Int, maDon)
         .query(`
           UPDATE dbo.GiaoHang
-          SET TrangThaiGiao = N'Đã giao',
-              NgayGiaoThucTe = COALESCE(NgayGiaoThucTe, SYSDATETIME())
+          SET TrangThaiGiao = N'Giao thành công',
+              NgayGiaoThucTe = COALESCE(NgayGiaoThucTe, SYSDATETIME()),
+              NgayCapNhat = SYSDATETIME()
           WHERE MaDon = @maDon
         `);
+    }
+    if (trangThaiMoi === "Đang giao") {
+      const shipment = await new sql.Request(transaction)
+        .input("maDon", sql.Int, maDon)
+        .query("SELECT TrangThaiGiao FROM dbo.GiaoHang WITH (UPDLOCK, HOLDLOCK) WHERE MaDon = @maDon");
+      if (!shipment.recordset.length || !["Chờ giao", "Giao không thành công"].includes(shipment.recordset[0].TrangThaiGiao)) {
+        throw loi(409, "Không thể bắt đầu giao từ trạng thái phiếu giao hiện tại.");
+      }
+      await new sql.Request(transaction).input("maDon", sql.Int, maDon)
+        .query("UPDATE dbo.GiaoHang SET TrangThaiGiao = N'Đang giao', NgayCapNhat = SYSDATETIME(), LyDoThatBai = NULL WHERE MaDon = @maDon");
     }
     await new sql.Request(transaction)
       .input("maDon", sql.Int, maDon)

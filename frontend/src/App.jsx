@@ -1,3 +1,4 @@
+import QuanLyGiaoHangNhanVien from "./pages/employee/QuanLyGiaoHangNhanVien";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/customer/Home";
 import Login from "./pages/customer/Login";
@@ -55,6 +56,8 @@ export default function App() {
         {(user) => <ChiTietDonHangNhanVien user={user}/>}</RoleGate>}/>
       <Route path="/nhan-vien/don-hang/:id/cap-nhat" element={<RoleGate allow={["Nhân viên"]}>
         {(user) => <CapNhatTrangThaiDonNhanVien user={user}/>}</RoleGate>}/>
+      <Route path="/nhan-vien/giao-hang" element={<RoleGate allow={["Nhân viên"]}>
+        {(user) => <QuanLyGiaoHangNhanVien user={user}/>}</RoleGate>}/>
       <Route path="/nhan-vien/ton-kho" element={<RoleGate allow={["Nhân viên"]}>
         {(user) => <TraCuuTonKho user={user}/>}</RoleGate>}/>
       <Route path="/nhan-vien/lich-su-kho" element={<RoleGate allow={["Nhân viên"]}>
