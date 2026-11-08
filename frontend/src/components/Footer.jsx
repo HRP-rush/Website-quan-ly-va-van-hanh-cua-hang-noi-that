@@ -1,66 +1,78 @@
+const footerGroups = [
+  {
+    title: "Khám phá",
+    links: ["Phòng khách", "Phòng ngủ", "Phòng ăn", "Bộ sưu tập"],
+  },
+  {
+    title: "Hỗ trợ khách hàng",
+    links: [
+      "Hướng dẫn mua hàng",
+      "Giao hàng & lắp đặt",
+      "Chính sách bảo hành",
+      "Đổi trả & hoàn tiền",
+    ],
+  },
+  {
+    title: "Kết nối với Mộc An",
+    links: ["1900 6868", "hello@mocan.vn", "Thứ 2 - Thứ 7: 9:00 - 18:00", "28 Nguyễn Cơ Thạch, TP.HCM"],
+  },
+];
 
-import { Link } from "react-router-dom";
-
-export default function Footer() {
-  return (
-    <footer className="footer" id="footer">
-      <div className="container">
-        <div className="footer-grid">
-          <div className="footer-brand">
-            <Link to="/" className="footer-logo">
-              MỘC AN
-            </Link>
-
-            <p>
-              Nội thất tinh giản. Giá trị bền lâu.
-              Đồng hành cùng bạn tạo nên một tổ ấm
-              mang dấu ấn riêng.
-            </p>
-
-            <div className="footer-social">
-              <span>Instagram</span>
-              <span>/</span>
-              <span>Facebook</span>
-              <span>/</span>
-              <span>Pinterest</span>
-            </div>
-          </div>
-
-          <div className="footer-column">
-            <h4>Khám phá</h4>
-            <Link to="/?danhMuc=Ph%C3%B2ng%20kh%C3%A1ch#products">Phòng khách</Link>
-            <Link to="/?danhMuc=Ph%C3%B2ng%20ng%E1%BB%A7#products">Phòng ngủ</Link>
-            <Link to="/?danhMuc=Ph%C3%B2ng%20%C4%83n#products">Phòng ăn</Link>
-            <Link to="/#inspiration">Bộ sưu tập</Link>
-          </div>
-
-          <div className="footer-column">
-            <h4>Hỗ trợ khách hàng</h4>
-            <Link to="/#consultation">Hướng dẫn mua hàng</Link>
-            <Link to="/#consultation">Giao hàng & lắp đặt</Link>
-            <Link to="/#consultation">Chính sách bảo hành</Link>
-            <Link to="/#consultation">Đổi trả & hoàn tiền</Link>
-          </div>
-
-          <div className="footer-column">
-            <h4>Kết nối với Mộc An</h4>
-            <p>Hotline: [Số điện thoại cửa hàng]</p>
-            <p>Email: [Email cửa hàng]</p>
-            <p>Thứ 2 – Chủ nhật: 09:00 – 18:00</p>
-            <p>[Địa chỉ cửa hàng]</p>
+function Footer({ variant = "store" }) {
+  if (variant === "checkout") {
+    return (
+      <footer className="site-footer checkout-footer">
+        <div className="footer-bottom">
+          <span>© 2026 MỘC AN INTERIOR. Ngôi nhà là một không gian.</span>
+          <div>
+            <a href="#privacy">Bảo mật thông tin</a>
+            <span>·</span>
+            <a href="#terms">Điều khoản mua hàng</a>
           </div>
         </div>
+      </footer>
+    );
+  }
 
-        <div className="footer-bottom">
-          <span>© 2026 MỘC AN INTERIOR</span>
-
-          <div>
-            <span>Bảo mật</span>
-            <span className="footer-separator">•</span>
-            <span>Điều khoản sử dụng</span>
+  return (
+    <footer className="site-footer">
+      <div className="footer-main">
+        <div className="footer-brand">
+          <a className="brand brand-light" href="#home">
+            <span>MỘC AN</span>
+            <small>INTERIOR</small>
+          </a>
+          <p>
+            Nội thất tinh giản, giữ gìn bản sắc. Đồng hành cùng bạn tạo nên một
+            tổ ấm mang dấu ấn riêng.
+          </p>
+          <div className="social-links">
+            <a href="#instagram">Instagram</a>
+            <span>/</span>
+            <a href="#facebook">Facebook</a>
+            <span>/</span>
+            <a href="#pinterest">Pinterest</a>
           </div>
+        </div>
+        {footerGroups.map((group) => (
+          <div className="footer-group" key={group.title}>
+            <h2>{group.title}</h2>
+            {group.links.map((link) => (
+              <a href={`#${link}`} key={link}>{link}</a>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="footer-bottom">
+        <span>© 2026 MỘC AN INTERIOR</span>
+        <div>
+          <a href="#privacy">Bảo mật</a>
+          <span>·</span>
+          <a href="#terms">Điều khoản sử dụng</a>
         </div>
       </div>
     </footer>
   );
 }
+
+export default Footer;

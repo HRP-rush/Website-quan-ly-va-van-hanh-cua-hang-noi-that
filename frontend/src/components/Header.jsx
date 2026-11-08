@@ -1,100 +1,74 @@
-import { useEffect, useState } from "react";
-import { Search, ShoppingBag, Menu, X } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import Navbar from "./Navbar";
-import AccountMenu from "./AccountMenu";
-import { getCart } from "../services/cartService";
+import Icon from "./Icons.jsx";
 
-export default function Header({ onSearch, onCategoryChange }) {
-  const navigate = useNavigate();
-  const [keyword, setKeyword] = useState("");
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
+const categories = [
+  "Phòng khách",
+  "Phòng ngủ",
+  "Phòng ăn",
+  "Bộ sưu tập",
+  "Về chúng tôi",
+];
 
-  useEffect(() => {
-    let active = true;
-    const updateCount = (event) => {
-      if (typeof event.detail?.count === "number") setCartCount(event.detail.count);
-    };
-    window.addEventListener("mocan-cart-change", updateCount);
-    getCart().then((items) => {
-      if (active) setCartCount(items.reduce((sum, item) => sum + Number(item.SoLuong || 0), 0));
-    }).catch(() => {
-      if (active) setCartCount(0);
-    });
-    return () => {
-      active = false;
-      window.removeEventListener("mocan-cart-change", updateCount);
-    };
-  }, []);
-
-  function handleSearch(event) {
-    event.preventDefault();
-    const value = keyword.trim();
-    if (typeof onSearch === "function") {
-      onSearch(value);
-    } else {
-      navigate(`/san-pham?q=${encodeURIComponent(value)}`);
-    }
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        document.getElementById("products")?.scrollIntoView({ behavior: "smooth" });
-      });
-    });
+function Header({ itemCount, variant = "store" }) {
+  if (variant === "checkout") {
+    return (
+      <header className="site-header checkout-header">
+        <div className="header-main">
+          <a className="brand" href="#home" aria-label="Mộc An - Trang chủ">
+            <span>MỘC AN</span>
+            <small>INTERIOR</small>
+          </a>
+          <div className="checkout-header-actions">
+            <Icon name="shield" size={13} />
+            <span>Thanh toán an tâm · Hỗ trợ 1900 6868</span>
+          </div>
+        </div>
+      </header>
+    );
   }
 
   return (
     <header className="site-header">
       <div className="announcement">
-        Miễn phí tư vấn lựa chọn nội thất phù hợp với không gian sống của bạn
+        Miễn phí vận chuyển cho nội thất phù hợp với không gian của bạn
       </div>
-
-      <div className="header-main container">
-        <Link to="/" className="brand" aria-label="Mộc An Interior">
-          <span className="brand-name">MỘC AN</span>
-          <span className="brand-subtitle">INTERIOR</span>
-        </Link>
-
-        <form className="header-search" onSubmit={handleSearch}>
-          <Search size={18} strokeWidth={1.5} />
+      <div className="header-main">
+        <a className="brand" href="#home" aria-label="Mộc An - Trang chủ">
+          <span>MỘC AN</span>
+          <small>INTERIOR</small>
+        </a>
+        <label className="search-field">
+          <Icon name="search" size={16} />
           <input
             type="search"
+            aria-label="Tìm sản phẩm"
             placeholder="Tìm sản phẩm cho ngôi nhà bạn"
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-            aria-label="Tìm kiếm sản phẩm"
           />
-          <button type="submit" aria-label="Tìm kiếm"><Search size={16} /></button>
-        </form>
-
+        </label>
         <div className="header-actions">
-          <AccountMenu />
-          <Link
-            to="/gio-hang"
-            className="header-action"
-            aria-label={`Mở giỏ hàng, ${cartCount} sản phẩm`}
-          >
-            <ShoppingBag size={19} strokeWidth={1.5} />
-            <span>Giỏ hàng{cartCount > 0 ? ` (${cartCount})` : ""}</span>
-          </Link>
+          <a href="#account">
+            <Icon name="user" />
+            <span>Tài khoản</span>
+          </a>
+          <a href="#cart" aria-current="page">
+            <Icon name="bag" />
+            <span>Giỏ hàng ({itemCount})</span>
+          </a>
         </div>
-
-        <button
-          className="mobile-menu-toggle"
-          type="button"
-          aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
-          aria-expanded={mobileOpen}
-          onClick={() => setMobileOpen((open) => !open)}
-        >
-          {mobileOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
       </div>
-
-      <Navbar
-        mobileOpen={mobileOpen}
-        closeMobile={() => setMobileOpen(false)}
-        onCategoryChange={onCategoryChange}
-      />
+      <nav className="main-nav" aria-label="Danh mục chính">
+        <a href="#home">Trang chủ</a>
+        <a href="#products">Sản phẩm</a>
+        {categories.map((category) => (
+          <a href={`#${category}`} key={category}>
+            {category}
+          </a>
+        ))}
+        <a className="nav-help" href="#help">
+          Tư vấn không gian <span aria-hidden="true">↗</span>
+        </a>
+      </nav>
     </header>
   );
 }
+
+export default Header;

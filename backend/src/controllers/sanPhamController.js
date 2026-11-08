@@ -1,3 +1,16 @@
+
+const { getPool, sql } = require("../config/db");
+
+const PHI_GIAO_HANG = 300000;
+
+function layMaSoHopLe(giaTri) {
+  const maSo = Number(giaTri);
+  return Number.isSafeInteger(maSo) && maSo > 0 ? maSo : null;
+}
+
+function taoYeuCau(giaoDich, maNguoiDung) {
+  return giaoDich.request().input("maNguoiDung", sql.Int, maNguoiDung);
+}
 const {THU_MUC, TIEN_TO_URL} = require("../middleware/uploadAnh");
 const fs = require("fs");
 const { sql, getPool } = require("../config/db");

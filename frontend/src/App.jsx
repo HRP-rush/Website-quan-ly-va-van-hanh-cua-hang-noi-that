@@ -1,3 +1,8 @@
+import Cart from "./pages/customer/Cart.jsx";
+import "./App.css";
+
+function App({ maNguoiDung }) {
+  return <Cart maNguoiDung={maNguoiDung} />;
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/customer/Home";
 import Login from "./pages/customer/Login";

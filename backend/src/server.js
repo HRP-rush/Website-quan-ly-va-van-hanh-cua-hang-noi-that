@@ -7,6 +7,7 @@ const cors = require("cors");
 const { getPool } = require("./config/db");
 
 const sanPhamRoutes = require("./routes/sanPhamRoutes");
+const diaChiRoutes = require("./routes/diaChiRoutes");
 const gioHangRoutes = require("./routes/gioHangRoutes");
 const donHangRoutes = require("./routes/donHangRoutes");
 
@@ -36,7 +37,7 @@ app.get("/", (req, res) => {
 });
 
 // API kiểm tra kết nối SQL Server
-app.get("/api/health/db", async (req, res) => {
+app.get("/api/v1/health/db", async (req, res) => {
   try {
     const pool = await getPool();
 
@@ -58,7 +59,8 @@ app.get("/api/health/db", async (req, res) => {
   }
 });
 
-app.use("/api/san-pham", sanPhamRoutes);
+app.use("/api/v1", sanPhamRoutes);
+app.use("/api/v1/dia-chi", diaChiRoutes);
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
