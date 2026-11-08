@@ -1,8 +1,16 @@
 const express = require("express");
-const { layDanhSachPhieuNhap } = require("../controllers/nhapKhoController");
+const {
+  layDanhSachPhieuNhap, layKhoiTaoPhieu, layPhieuNhap, taoPhieuNhap, capNhatPhieuNhap
+} = require("../controllers/nhapKhoController");
 const { xacThuc, choPhepVaiTro } = require("../middleware/xacThuc");
 
 const router = express.Router();
-router.get("/phieu-nhap", xacThuc, choPhepVaiTro("Quản lý", "Admin"), layDanhSachPhieuNhap);
+const quanTri = [xacThuc, choPhepVaiTro("Quản lý", "Admin")];
+
+router.get("/phieu-nhap", ...quanTri, layDanhSachPhieuNhap);
+router.get("/khoi-tao-phieu", ...quanTri, layKhoiTaoPhieu);
+router.get("/phieu-nhap/:maPhieuNhap", ...quanTri, layPhieuNhap);
+router.post("/phieu-nhap", ...quanTri, taoPhieuNhap);
+router.put("/phieu-nhap/:maPhieuNhap", ...quanTri, capNhatPhieuNhap);
 
 module.exports = router;
