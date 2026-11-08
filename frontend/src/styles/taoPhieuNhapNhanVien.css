@@ -1,0 +1,7 @@
+/* Hộp thoại xác nhận chỉ hiển thị khi nhân viên bấm "Kiểm tra và xác nhận". */
+.tp-employee-dialog { max-width: 510px; border: 1px solid #e9ded1; }
+.tp-employee-dialog h2 { font-family: Georgia, serif; font-weight: 400; font-size: 26px; }
+.tp-employee-dialog .tp-actions { margin-top: 24px; }
+.tp-employee-dialog .tp-alert { margin: 12px 0; }
+.tp-success { padding: 13px 16px; background: #edf5ef; border: 1px solid #cce5d1; border-radius: 5px; color: #24733e; font-size: 13px; }
+.tp-rowgrid .tp-field:nth-child(4) input { background: #fff; border: 0; padding-left: 0; font-weight: 600; color: #292b27; }

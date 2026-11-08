@@ -21,7 +21,7 @@ const staffNav = [
   { title: "Đơn hàng", icon: "orders", path: "" },
   { title: "Giao hàng", icon: "delivery" },
   { title: "Tồn kho", icon: "inventory", path: "/ton-kho" },
-  { title: "Nhập kho", icon: "receipts" },
+  { title: "Nhập kho", icon: "receipts", path: "/nhap-kho" },
   { title: "Lịch sử kho", icon: "history" }
 ];
 const managementNav = [

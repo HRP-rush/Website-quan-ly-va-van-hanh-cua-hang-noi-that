@@ -26,6 +26,7 @@ import QuanLyDanhMuc from "./pages/management/QuanLyDanhMuc";
 import ThemDanhMuc from "./pages/management/ThemDanhMuc";
 import DanhSachPhieuNhap from "./pages/management/DanhSachPhieuNhap";
 import TaoPhieuNhap from "./pages/management/TaoPhieuNhap";
+import TaoPhieuNhapNhanVien from "./pages/employee/TaoPhieuNhapNhanVien";
 
 export default function App() {
   return <BrowserRouter>
@@ -50,6 +51,10 @@ export default function App() {
         {(user) => <EmployeeDashboard user={user}/>}</RoleGate>}/>
       <Route path="/nhan-vien/ton-kho" element={<RoleGate allow={["Nhân viên"]}>
         {(user) => <TraCuuTonKho user={user}/>}</RoleGate>}/>
+      <Route path="/nhan-vien/nhap-kho" element={<RoleGate allow={["Nhân viên"]}>
+        {(user) => <TaoPhieuNhapNhanVien user={user}/>}</RoleGate>}/>
+      <Route path="/nhan-vien/nhap-kho/:maPhieuNhap" element={<RoleGate allow={["Nhân viên"]}>
+        {(user) => <TaoPhieuNhapNhanVien user={user}/>}</RoleGate>}/>
       <Route path="/quan-ly" element={<RoleGate allow={["Quản lý"]}>
         {(user) => <ManagementDashboard user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/admin" element={<RoleGate allow={["Admin"]}>
