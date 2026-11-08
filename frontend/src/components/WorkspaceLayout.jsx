@@ -33,7 +33,7 @@ const managementNav = [
   ] },
   { group: "KHO & CUNG ỨNG", items: [
     { title: "Kho hàng", icon: "inventory", path: "/kho-hang" },
-    { title: "Phiếu nhập", icon: "receipts" },
+    { title: "Phiếu nhập", icon: "receipts", path: "/phieu-nhap" },
     { title: "Nhà cung cấp", icon: "suppliers" }
   ] },
   { group: "BÁN HÀNG", items: [

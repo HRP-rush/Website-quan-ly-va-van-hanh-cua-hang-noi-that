@@ -14,6 +14,7 @@ import QuanLyTonKho from "./pages/management/QuanLyTonKho";
 import ChiTietTonKho from "./pages/management/ChiTietTonKho";
 import Catalog from "./pages/customer/Catalog";
 import ProductDetail from "./pages/customer/ProductDetail";
+import DanhSachPhieuNhap from "./pages/management/DanhSachPhieuNhap";
 
 export default function App() {
   return <BrowserRouter>
@@ -62,6 +63,10 @@ export default function App() {
         {(user) => <ChiTietTonKho user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/admin/kho-hang/:maBienThe" element={<RoleGate allow={["Admin"]}>
         {(user) => <ChiTietTonKho user={user} mode="admin"/>}</RoleGate>}/>
+      <Route path="/quan-ly/phieu-nhap" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => <DanhSachPhieuNhap user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/admin/phieu-nhap" element={<RoleGate allow={["Admin"]}>
+        {(user) => <DanhSachPhieuNhap user={user} mode="admin"/>}</RoleGate>}/>
       <Route path="*" element={<Navigate to="/" replace/>}/>
     </Routes>
   </BrowserRouter>;
