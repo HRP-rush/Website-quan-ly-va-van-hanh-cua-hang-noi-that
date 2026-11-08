@@ -42,3 +42,19 @@ export async function getReceiptDetail(maPhieuNhap) {
   const res = await fetch(`${API_URL}/api/nhap-kho/phieu-nhap/${encodeURIComponent(maPhieuNhap)}/chi-tiet`, { credentials: "include" });
   return (await parse(res)).data; // { phieu, dong, tongTien, tongSoLuong, maGiaoDich, soGiaoDich, gioGhiNhan }
 }
+// Endpoints riêng cho nhân viên, luôn xác thực và phân quyền tại backend.
+export async function getEmployeeReceiptForm() {
+  const res = await fetch(`${API_URL}/api/nhap-kho/nhan-vien/khoi-tao-phieu`, { credentials: "include" });
+  return (await parse(res)).data;
+}
+export async function getEmployeeReceipt(id) {
+  const res = await fetch(`${API_URL}/api/nhap-kho/nhan-vien/phieu-nhap/${encodeURIComponent(id)}`, { credentials: "include" });
+  return (await parse(res)).data;
+}
+export async function saveEmployeeReceipt(id, body) {
+  const res = await fetch(`${API_URL}/api/nhap-kho/nhan-vien/phieu-nhap${id ? `/${encodeURIComponent(id)}` : ""}`, {
+    method: id ? "PUT" : "POST", credentials: "include",
+    headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+  });
+  return parse(res);
+}

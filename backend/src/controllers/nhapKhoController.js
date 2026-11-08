@@ -145,11 +145,11 @@ async function layPhieuNhap(req, res) {
   try {
     const pool = await getPool();
     const [h, d] = await Promise.all([
-      pool.request().input("id", sql.Int, id).query(`
+      pool.request().input("id", sql.Int, id).input("nguoi", sql.Int, req.user.MaNguoiDung).query(`
         SELECT pn.MaPhieuNhap, pn.MaNCC, pn.TrangThai, pn.GhiChu,
                CONVERT(VARCHAR(10), pn.NgayNhap, 23) AS NgayNhap, COALESCE(nd.HoTen, nd.Email) AS NguoiLap
         FROM dbo.PhieuNhap pn INNER JOIN dbo.NguoiDung nd ON nd.MaNguoiDung = pn.MaNguoiDung
-        WHERE pn.MaPhieuNhap = @id`),
+        WHERE pn.MaPhieuNhap = @id ${req.user.TenVaiTro === "Nhân viên" ? "AND pn.MaNguoiDung = @nguoi" : ""}`),
       pool.request().input("id", sql.Int, id)
         .query("SELECT MaBienThe, SoLuong, DonGiaNhap FROM dbo.CTPhieuNhap WHERE MaPhieuNhap = @id ORDER BY MaCTNhap")
     ]);
@@ -207,7 +207,9 @@ async function luuPhieu(req, res, maCu) {
       maPhieu = r.recordset[0].MaPhieuNhap;
     } else {
       const cur = await new sql.Request(tx).input("id", sql.Int, maCu)
-        .query("SELECT TrangThai FROM dbo.PhieuNhap WITH (UPDLOCK, ROWLOCK) WHERE MaPhieuNhap = @id");
+        .input("nguoi", sql.Int, req.user.MaNguoiDung)
+        .query(`SELECT TrangThai FROM dbo.PhieuNhap WITH (UPDLOCK, ROWLOCK)
+          WHERE MaPhieuNhap = @id ${req.user.TenVaiTro === "Nhân viên" ? "AND MaNguoiDung = @nguoi" : ""}`);
       if (!cur.recordset.length) throw loiNghiepVu(404, "Không tìm thấy phiếu nhập.");
       if (cur.recordset[0].TrangThai !== TRANG_THAI_NHAP) throw loiNghiepVu(409, "Phiếu đã ghi nhận chỉ được xem, không thể sửa.");
       await new sql.Request(tx).input("id", sql.Int, maCu).input("ncc", sql.Int, du.maNCC)

@@ -4,6 +4,8 @@ import Login from "./pages/customer/Login";
 import Register from "./pages/customer/Register";
 import RoleGate from "./components/RoleGate";
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
+import LichSuKhoNhanVien from "./pages/employee/LichSuKhoNhanVien";
+import TraCuuTonKho from "./pages/employee/TraCuuTonKho";
 import ManagementDashboard from "./pages/management/ManagementDashboard";
 import ThemSanPham from "./pages/management/ThemSanPham";
 import DanhSachSanPham from "./pages/management/DanhSachSanPham";
@@ -22,6 +24,7 @@ import QuanLyDanhMuc from "./pages/management/QuanLyDanhMuc";
 import ThemDanhMuc from "./pages/management/ThemDanhMuc";
 import DanhSachPhieuNhap from "./pages/management/DanhSachPhieuNhap";
 import TaoPhieuNhap from "./pages/management/TaoPhieuNhap";
+import TaoPhieuNhapNhanVien from "./pages/employee/TaoPhieuNhapNhanVien";
 import ThanhToan from "./pages/customer/ThanhToan";
 
 export default function App() {
@@ -43,6 +46,14 @@ export default function App() {
       {/* Route được bảo vệ; Backend cũng phải kiểm tra quyền ở API nghiệp vụ. */}
       <Route path="/nhan-vien" element={<RoleGate allow={["Nhân viên"]}>
         {(user) => <EmployeeDashboard user={user}/>}</RoleGate>}/>
+      <Route path="/nhan-vien/ton-kho" element={<RoleGate allow={["Nhân viên"]}>
+        {(user) => <TraCuuTonKho user={user}/>}</RoleGate>}/>
+      <Route path="/nhan-vien/lich-su-kho" element={<RoleGate allow={["Nhân viên"]}>
+        {(user) => <LichSuKhoNhanVien user={user}/>}</RoleGate>}/>
+      <Route path="/nhan-vien/nhap-kho" element={<RoleGate allow={["Nhân viên"]}>
+        {(user) => <TaoPhieuNhapNhanVien user={user}/>}</RoleGate>}/>
+      <Route path="/nhan-vien/nhap-kho/:maPhieuNhap" element={<RoleGate allow={["Nhân viên"]}>
+        {(user) => <TaoPhieuNhapNhanVien user={user}/>}</RoleGate>}/>
       <Route path="/quan-ly" element={<RoleGate allow={["Quản lý"]}>
         {(user) => <ManagementDashboard user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/admin" element={<RoleGate allow={["Admin"]}>

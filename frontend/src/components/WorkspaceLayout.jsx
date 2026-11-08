@@ -20,9 +20,9 @@ const staffNav = [
   { title: "Tổng quan", icon: "overview", path: "" },
   { title: "Đơn hàng", icon: "orders", path: "" },
   { title: "Giao hàng", icon: "delivery" },
-  { title: "Tồn kho", icon: "inventory" },
-  { title: "Nhập kho", icon: "receipts" },
-  { title: "Lịch sử kho", icon: "history" }
+  { title: "Tồn kho", icon: "inventory", path: "/ton-kho" },
+  { title: "Nhập kho", icon: "receipts", path: "/nhap-kho" },
+  { title: "Lịch sử kho", icon: "history", path: "/lich-su-kho" }
 ];
 const managementNav = [
   { group: "TỔNG QUAN", items: [{ title: "Tổng quan", icon: "overview", path: "" }] },
