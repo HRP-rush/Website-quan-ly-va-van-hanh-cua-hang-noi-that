@@ -393,12 +393,16 @@ async function capNhatTrangThaiDonHang(req, res) {
     transactionStarted = true;
     const currentResult = await new sql.Request(transaction)
       .input("maDon", sql.Int, maDon)
-      .query("SELECT TrangThai FROM dbo.DonHang WITH (UPDLOCK, HOLDLOCK) WHERE MaDon = @maDon");
+      .query("SELECT TrangThai, MaNhanVienXuLy FROM dbo.DonHang WITH (UPDLOCK, HOLDLOCK) WHERE MaDon = @maDon");
     const current = currentResult.recordset[0];
     if (!current) {
       await transaction.rollback();
       transactionStarted = false;
       return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng." });
+    }
+    if (req.user.TenVaiTro === 'Nhân viên' && Number(current.MaNhanVienXuLy) !== req.user.MaNguoiDung) {
+      await transaction.rollback();transactionStarted=false;
+      return res.status(403).json({success:false,message:'Đơn hàng chưa được phân công cho bạn.'});
     }
     const viTriCu = TRANG_THAI_DON.indexOf(current.TrangThai);
     const viTriMoi = TRANG_THAI_DON.indexOf(trangThaiMoi);
@@ -560,7 +564,10 @@ async function danhSachDonNhanVien(req, res) {
   const tuNgay = String(req.query.tuNgay || "").trim();
   const denNgay = String(req.query.denNgay || "").trim();
   const trang = Math.max(1, Math.min(100000, Number(req.query.trang) || 1));
-  const soDong = 6;
+  const soDong = req.user.TenVaiTro === "Nhân viên" ? 6 : 10;
+  const active = req.query.active === "true";
+  const nhanVien = req.user.TenVaiTro === 'Nhân viên' ? 0 : Number(req.query.nhanVien || 0);
+  if (!Number.isSafeInteger(nhanVien) || nhanVien < -1) return res.status(400).json({success:false,message:'Bộ lọc nhân viên không hợp lệ.'});
   if ((trangThai && !TRANG_THAI_BO_LOC.includes(trangThai)) ||
       (thanhToan && !["Đã thanh toán", "Chờ thanh toán"].includes(thanhToan)) ||
       (gia && !["duoi10", "10den30", "tren30"].includes(gia)) ||
@@ -579,15 +586,20 @@ async function danhSachDonNhanVien(req, res) {
       .input("denNgay", sql.VarChar(10), denNgay)
       .input("offset", sql.Int, (trang - 1) * soDong)
       .input("soDong", sql.Int, soDong)
+      .input("nhanVien", sql.Int, nhanVien).input("active",sql.Bit,active).input("role", sql.NVarChar(30), req.user.TenVaiTro).input("viewer", sql.Int, req.user.MaNguoiDung)
       .query(`
         WITH ds AS (
           SELECT dh.MaDon, dh.NgayDat, dh.TrangThai, dh.TenNguoiNhan, dh.SDTNhan,
-                 dh.TongThanhToan, tt.PhuongThuc AS PhuongThucThanhToan,
+                 dh.TongThanhToan, dh.MaNhanVienXuLy, nvl.HoTen AS NhanVienXuLy, tt.PhuongThuc AS PhuongThucThanhToan,
                  tt.TrangThai AS TrangThaiThanhToan
           FROM dbo.DonHang dh
+          LEFT JOIN dbo.NguoiDung nvl ON nvl.MaNguoiDung = dh.MaNhanVienXuLy
           OUTER APPLY (SELECT TOP (1) PhuongThuc, TrangThai FROM dbo.ThanhToan
                        WHERE MaDon = dh.MaDon ORDER BY MaThanhToan DESC) tt
-          WHERE (@trangThai = N'' OR dh.TrangThai = @trangThai)
+          WHERE ( @nhanVien = 0 OR (@nhanVien = -1 AND dh.MaNhanVienXuLy IS NULL) OR dh.MaNhanVienXuLy = @nhanVien )
+            AND (@role <> N'Nhân viên' OR dh.MaNhanVienXuLy = @viewer)
+            AND (@active = 0 OR dh.TrangThai IN (N'Đã xác nhận',N'Đang chuẩn bị',N'Đang giao'))
+            AND (@trangThai = N'' OR dh.TrangThai = @trangThai)
             AND (@thanhToan = N'' OR tt.TrangThai = @thanhToan)
             AND (@gia = '' OR (@gia = 'duoi10' AND dh.TongThanhToan < 10000000)
                  OR (@gia = '10den30' AND dh.TongThanhToan BETWEEN 10000000 AND 30000000)
@@ -600,7 +612,7 @@ async function danhSachDonNhanVien(req, res) {
                  OR CONCAT('MA-', CONVERT(char(8), dh.NgayDat, 112), '-', RIGHT('000' + CAST(dh.MaDon AS varchar(20)), 3)) LIKE N'%' + @q + N'%')
         )
         SELECT MaDon, CONVERT(varchar(19), NgayDat, 126) AS NgayDat, TrangThai,
-               TenNguoiNhan, SDTNhan, TongThanhToan, PhuongThucThanhToan, TrangThaiThanhToan,
+               TenNguoiNhan, SDTNhan, TongThanhToan, MaNhanVienXuLy, NhanVienXuLy, PhuongThucThanhToan, TrangThaiThanhToan,
                COUNT(*) OVER() AS TongSo
         FROM ds
         ORDER BY NgayDat DESC, MaDon DESC
@@ -616,9 +628,13 @@ async function danhSachDonNhanVien(req, res) {
         .input("q", sql.NVarChar(150), q).input("trangThai", sql.NVarChar(40), trangThai)
         .input("thanhToan", sql.NVarChar(40), thanhToan).input("gia", sql.VarChar(20), gia)
         .input("tuNgay", sql.VarChar(10), tuNgay).input("denNgay", sql.VarChar(10), denNgay)
+        .input("nhanVien", sql.Int, nhanVien).input("active",sql.Bit,active).input("role", sql.NVarChar(30), req.user.TenVaiTro).input("viewer", sql.Int, req.user.MaNguoiDung)
         .query(`SELECT COUNT(*) AS Tong FROM dbo.DonHang dh
           OUTER APPLY (SELECT TOP (1) TrangThai FROM dbo.ThanhToan WHERE MaDon = dh.MaDon ORDER BY MaThanhToan DESC) tt
-          WHERE (@trangThai = N'' OR dh.TrangThai = @trangThai)
+          WHERE ( @nhanVien = 0 OR (@nhanVien = -1 AND dh.MaNhanVienXuLy IS NULL) OR dh.MaNhanVienXuLy = @nhanVien )
+          AND (@role <> N'Nhân viên' OR dh.MaNhanVienXuLy = @viewer)
+            AND (@active = 0 OR dh.TrangThai IN (N'Đã xác nhận',N'Đang chuẩn bị',N'Đang giao'))
+          AND (@trangThai = N'' OR dh.TrangThai = @trangThai)
           AND (@thanhToan = N'' OR tt.TrangThai = @thanhToan)
           AND (@gia = '' OR (@gia = 'duoi10' AND dh.TongThanhToan < 10000000) OR (@gia = '10den30' AND dh.TongThanhToan BETWEEN 10000000 AND 30000000) OR (@gia = 'tren30' AND dh.TongThanhToan > 30000000))
           AND (@tuNgay = '' OR dh.NgayDat >= TRY_CONVERT(date, @tuNgay, 23))
@@ -640,16 +656,18 @@ async function chiTietDonNhanVien(req, res) {
     const pool = await getPool();
     const result = await pool.request().input("maDon", sql.Int, maDon).query(`
       SELECT dh.MaDon, CONVERT(varchar(19), dh.NgayDat, 126) AS NgayDat,
-             dh.TrangThai, dh.TenNguoiNhan, dh.SDTNhan, dh.DiaChiGiao,
+             dh.TrangThai, dh.MaNhanVienXuLy, nvl.HoTen AS NhanVienXuLy, dh.TenNguoiNhan, dh.SDTNhan, dh.DiaChiGiao,
              nd.Email, dh.TienHang, dh.PhiGiao, dh.GiamGia, dh.TongThanhToan,
              tt.PhuongThuc AS PhuongThucThanhToan, tt.TrangThai AS TrangThaiThanhToan
       FROM dbo.DonHang dh
       LEFT JOIN dbo.NguoiDung nd ON nd.MaNguoiDung = dh.MaNguoiDung
+      LEFT JOIN dbo.NguoiDung nvl ON nvl.MaNguoiDung = dh.MaNhanVienXuLy
       OUTER APPLY (SELECT TOP (1) PhuongThuc, TrangThai FROM dbo.ThanhToan
                    WHERE MaDon = dh.MaDon ORDER BY MaThanhToan DESC) tt
       WHERE dh.MaDon = @maDon`);
     const don = result.recordset[0];
     if (!don) return res.status(404).json({success:false, message:"Không tìm thấy đơn hàng."});
+    if (req.user.TenVaiTro === "Nhân viên" && Number(don.MaNhanVienXuLy) !== req.user.MaNguoiDung) return res.status(403).json({success:false,message:"Đơn hàng chưa được phân công cho bạn."});
     const [ct, ls] = await Promise.all([
       pool.request().input("maDon", sql.Int, maDon).query(`
         SELECT ct.MaBienThe, ct.TenSanPhamSnapshot AS TenSanPham,
@@ -680,6 +698,11 @@ async function kiemTraTonDonNhanVien(req, res) {
   if (!Number.isSafeInteger(maDon) || maDon <= 0) return res.status(400).json({success:false, message:"Mã đơn không hợp lệ."});
   try {
     const pool = await getPool();
+    if (req.user.TenVaiTro === 'Nhân viên') {
+      const scope = await pool.request().input('maDon',sql.Int,maDon).input('viewer',sql.Int,req.user.MaNguoiDung)
+        .query('SELECT 1 AS CoQuyen FROM dbo.DonHang WHERE MaDon=@maDon AND MaNhanVienXuLy=@viewer');
+      if (!scope.recordset.length) return res.status(403).json({success:false,message:'Đơn hàng chưa được phân công cho bạn.'});
+    }
     const result = await pool.request().input("maDon", sql.Int, maDon).query(`
       SELECT ct.MaBienThe, ct.TenSanPhamSnapshot AS TenSanPham, ct.SKUSnapshot AS SKU,
              SUM(ct.SoLuong) AS SoLuongDat, ISNULL(t.SoLuongTon, 0) AS SoLuongTon,
@@ -702,4 +725,46 @@ async function kiemTraTonDonNhanVien(req, res) {
   }
 }
 
-module.exports = { danhSachDonNhanVien, chiTietDonNhanVien, kiemTraTonDonNhanVien, taoDonHang, layLichSuDonHang, theoDoiDonHang, locDonHangTheoTrangThai, capNhatTrangThaiDonHang };
+// Chỉ Quản lý/Admin được quản lý phân công. Chặn ghi đè khi đơn đã khóa.
+async function danhSachNhanVienXuLy(req,res) {
+  try {
+    const pool=await getPool();const r=await pool.request().query(`
+      SELECT nd.MaNguoiDung,nd.HoTen FROM dbo.NguoiDung nd
+      INNER JOIN dbo.VaiTro vt ON vt.MaVaiTro=nd.MaVaiTro
+      WHERE vt.TenVaiTro=N'Nhân viên' AND nd.TrangThai=N'Hoạt động'
+      ORDER BY nd.HoTen,nd.MaNguoiDung`);
+    res.json({success:true,data:r.recordset});
+  } catch(e){console.error('DS nhân viên phân công',e.message);res.status(500).json({success:false,message:'Không lấy được nhân viên.'});}
+}
+async function thongKeDonQuanLy(req,res) {
+  try {
+    const pool=await getPool();const r=await pool.request().query(`
+      SELECT TrangThai,COUNT(*) AS SoLuong FROM dbo.DonHang GROUP BY TrangThai`);
+    const data=Object.fromEntries(r.recordset.map(x=>[x.TrangThai,x.SoLuong]));
+    res.json({success:true,data});
+  }catch(e){console.error('Thống kê đơn quản lý',e.message);res.status(500).json({success:false,message:'Không lấy được thống kê.'});}
+}
+async function phanCongDon(req,res) {
+  const maDon=Number(req.params.id), maNhanVien=Number(req.body?.maNhanVien);
+  if(!Number.isSafeInteger(maDon)||maDon<=0||!Number.isSafeInteger(maNhanVien)||maNhanVien<=0)
+    return res.status(400).json({success:false,message:'Mã đơn hoặc nhân viên không hợp lệ.'});
+  let tx,started=false;
+  try {
+    const pool=await getPool();tx=new sql.Transaction(pool);await tx.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);started=true;
+    const employee=await new sql.Request(tx).input('id',sql.Int,maNhanVien).query(`
+      SELECT nd.HoTen FROM dbo.NguoiDung nd JOIN dbo.VaiTro vt ON nd.MaVaiTro=vt.MaVaiTro
+      WHERE nd.MaNguoiDung=@id AND nd.TrangThai=N'Hoạt động' AND vt.TenVaiTro=N'Nhân viên'`);
+    if(!employee.recordset.length){await tx.rollback();started=false;return res.status(400).json({success:false,message:'Nhân viên không hợp lệ hoặc đã ngưng hoạt động.'});}
+    const order=await new sql.Request(tx).input('id',sql.Int,maDon).query(`
+      SELECT TrangThai,MaNhanVienXuLy FROM dbo.DonHang WITH (UPDLOCK,HOLDLOCK) WHERE MaDon=@id`);
+    if(!order.recordset.length){await tx.rollback();started=false;return res.status(404).json({success:false,message:'Không tìm thấy đơn.'});}
+    if(['Hoàn tất','Đã hủy'].includes(order.recordset[0].TrangThai)){
+      await tx.rollback();started=false;return res.status(409).json({success:false,message:'Đơn đã đóng không thể phân công lại.'});
+    }
+    await new sql.Request(tx).input('id',sql.Int,maDon).input('employee',sql.Int,maNhanVien)
+      .query('UPDATE dbo.DonHang SET MaNhanVienXuLy=@employee WHERE MaDon=@id');
+    await tx.commit();started=false;
+    return res.json({success:true,data:{MaDon:maDon,MaNhanVienXuLy:maNhanVien,NhanVienXuLy:employee.recordset[0].HoTen}});
+  } catch(e){if(started)await tx.rollback().catch(()=>{});console.error('Phân công đơn',e.message);return res.status(500).json({success:false,message:'Không thể phân công đơn hàng.'});}
+}
+module.exports = { danhSachNhanVienXuLy, thongKeDonQuanLy, phanCongDon, danhSachDonNhanVien, chiTietDonNhanVien, kiemTraTonDonNhanVien, taoDonHang, layLichSuDonHang, theoDoiDonHang, locDonHangTheoTrangThai, capNhatTrangThaiDonHang };

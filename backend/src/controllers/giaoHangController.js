@@ -18,6 +18,7 @@ async function danhSachGiaoHang(req,res) {
     const pool=await getPool();
     const result=await pool.request().input('q',sql.NVarChar(150),q)
       .input('trangThai',sql.NVarChar(40),trangThai)
+      .input('role',sql.NVarChar(30),req.user.TenVaiTro).input('viewer',sql.Int,req.user.MaNguoiDung)
       .input('tuNgay',sql.VarChar(10),tuNgay).input('denNgay',sql.VarChar(10),denNgay)
       .query(`SELECT gh.MaGiaoHang,gh.MaDon,gh.TrangThaiGiao,
           CONVERT(varchar(19),dh.NgayDat,126) NgayDat,
@@ -27,6 +28,7 @@ async function danhSachGiaoHang(req,res) {
         FROM dbo.GiaoHang gh
         INNER JOIN dbo.DonHang dh ON dh.MaDon=gh.MaDon
         WHERE dh.TrangThai <> N'Chờ xác nhận'
+          AND (@role<>N'Nhân viên' OR dh.MaNhanVienXuLy=@viewer)
           AND (@trangThai=N'' OR gh.TrangThaiGiao=@trangThai)
           AND (@tuNgay='' OR COALESCE(gh.NgayCapNhat,gh.NgayGiaoThucTe,dh.NgayDat)>=TRY_CONVERT(date,@tuNgay,23))
           AND (@denNgay='' OR COALESCE(gh.NgayCapNhat,gh.NgayGiaoThucTe,dh.NgayDat)<DATEADD(day,1,TRY_CONVERT(date,@denNgay,23)))
@@ -42,7 +44,8 @@ async function chiTietGiaoHang(req,res) {
   const id=idFrom(req); if(!validId(id))return fail(res,400,'Mã giao hàng không hợp lệ.');
   try {
     const pool=await getPool();
-    const result=await pool.request().input('id',sql.Int,id).query(`
+    const result=await pool.request().input('id',sql.Int,id)
+      .input('role',sql.NVarChar(30),req.user.TenVaiTro).input('viewer',sql.Int,req.user.MaNguoiDung).query(`
       SELECT gh.MaGiaoHang,gh.MaDon,gh.TrangThaiGiao,gh.NgayGiaoThucTe,
         gh.LyDoThatBai,dh.TrangThai AS TrangThaiDon,
         CONVERT(varchar(19),dh.NgayDat,126) AS NgayDat,dh.TenNguoiNhan,
@@ -51,7 +54,8 @@ async function chiTietGiaoHang(req,res) {
       FROM dbo.GiaoHang gh INNER JOIN dbo.DonHang dh ON dh.MaDon=gh.MaDon
       OUTER APPLY (SELECT TOP(1) PhuongThuc,TrangThai FROM dbo.ThanhToan
         WHERE MaDon=dh.MaDon ORDER BY MaThanhToan DESC) tt
-      WHERE gh.MaGiaoHang=@id AND dh.TrangThai<>N'Chờ xác nhận'`);
+      WHERE gh.MaGiaoHang=@id AND dh.TrangThai<>N'Chờ xác nhận'
+        AND (@role<>N'Nhân viên' OR dh.MaNhanVienXuLy=@viewer)`);
     const delivery=result.recordset[0];
     if(!delivery)return fail(res,404,'Không tìm thấy phiếu giao hàng.');
     const items=await pool.request().input('id',sql.Int,delivery.MaDon).query(`
@@ -71,10 +75,11 @@ async function batDauGiaoHang(req,res){
   try {
     const pool=await getPool();tx=new sql.Transaction(pool);await tx.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);started=true;
     const r=await new sql.Request(tx).input('id',sql.Int,id).query(`
-      SELECT gh.MaDon,gh.TrangThaiGiao,dh.TrangThai AS TrangThaiDon
+      SELECT gh.MaDon,gh.TrangThaiGiao,dh.MaNhanVienXuLy,dh.TrangThai AS TrangThaiDon
       FROM dbo.GiaoHang gh INNER JOIN dbo.DonHang dh WITH (UPDLOCK,HOLDLOCK) ON dh.MaDon=gh.MaDon
       WHERE gh.MaGiaoHang=@id`);
     const x=r.recordset[0];
+    if(x && req.user.TenVaiTro==='Nhân viên' && Number(x.MaNhanVienXuLy)!==req.user.MaNguoiDung){await tx.rollback();started=false;return fail(res,403,'Phiếu giao chưa được phân công cho bạn.');}
     if(!x || !['Chờ giao','Giao không thành công'].includes(x.TrangThaiGiao) || !['Đang chuẩn bị','Đang giao'].includes(x.TrangThaiDon)){
       await tx.rollback();started=false;return fail(res,409,'Phiếu giao không ở trạng thái có thể bắt đầu giao.');
     }
@@ -99,10 +104,11 @@ async function baoGiaoThatBai(req,res){
   try{
     const pool=await getPool();tx=new sql.Transaction(pool);await tx.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);started=true;
     const r=await new sql.Request(tx).input('id',sql.Int,id).query(`
-      SELECT gh.TrangThaiGiao,dh.TrangThai AS TrangThaiDon
+      SELECT gh.TrangThaiGiao,dh.MaNhanVienXuLy,dh.TrangThai AS TrangThaiDon
       FROM dbo.GiaoHang gh INNER JOIN dbo.DonHang dh WITH (UPDLOCK,HOLDLOCK) ON dh.MaDon=gh.MaDon
       WHERE gh.MaGiaoHang=@id`);
     const x=r.recordset[0];
+    if(x && req.user.TenVaiTro==='Nhân viên' && Number(x.MaNhanVienXuLy)!==req.user.MaNguoiDung){await tx.rollback();started=false;return fail(res,403,'Phiếu giao chưa được phân công cho bạn.');}
     if(!x||x.TrangThaiGiao!=='Đang giao'||x.TrangThaiDon!=='Đang giao'){
       await tx.rollback();started=false;return fail(res,409,'Chỉ báo thất bại khi phiếu giao đang được giao.');
     }

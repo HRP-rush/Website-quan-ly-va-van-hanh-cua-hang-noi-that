@@ -2,6 +2,7 @@ const express = require("express");
 const { danhSachGiaoHang, chiTietGiaoHang, batDauGiaoHang, baoGiaoThatBai, giaoThanhCong } = require("../controllers/giaoHangController");
 
 const {
+  danhSachNhanVienXuLy, thongKeDonQuanLy, phanCongDon,
   danhSachDonNhanVien,
   chiTietDonNhanVien,
   kiemTraTonDonNhanVien,
@@ -26,6 +27,10 @@ router.get("/nhan-vien/giao-hang/:id", ...giaoQuyen, chiTietGiaoHang);
 router.post("/nhan-vien/giao-hang/:id/bat-dau", ...giaoQuyen, batDauGiaoHang);
 router.post("/nhan-vien/giao-hang/:id/that-bai", ...giaoQuyen, baoGiaoThatBai);
 router.post("/nhan-vien/giao-hang/:id/thanh-cong", ...giaoQuyen, giaoThanhCong);
+
+router.get("/quan-ly/nhan-vien", xacThuc, choPhepVaiTro("Quản lý", "Admin"), danhSachNhanVienXuLy);
+router.get("/quan-ly/thong-ke", xacThuc, choPhepVaiTro("Quản lý", "Admin"), thongKeDonQuanLy);
+router.patch("/quan-ly/:id/phan-cong", xacThuc, choPhepVaiTro("Quản lý", "Admin"), phanCongDon);
 
 router.get("/nhan-vien/danh-sach", xacThuc, choPhepVaiTro("Nhân viên", "Quản lý", "Admin"), danhSachDonNhanVien);
 router.get("/nhan-vien/:id/chi-tiet", xacThuc, choPhepVaiTro("Nhân viên", "Quản lý", "Admin"), chiTietDonNhanVien);

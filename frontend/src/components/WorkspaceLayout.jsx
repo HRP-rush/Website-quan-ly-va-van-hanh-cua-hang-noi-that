@@ -37,8 +37,8 @@ const managementNav = [
     { title: "Nhà cung cấp", icon: "suppliers", path: "/nha-cung-cap" }
   ] },
   { group: "BÁN HÀNG", items: [
-    { title: "Đơn hàng", icon: "orders" },
-    { title: "Giao hàng", icon: "delivery" }
+    { title: "Đơn hàng", icon: "orders", path: "/don-hang" },
+    { title: "Giao hàng", icon: "delivery", path: "/giao-hang" }
   ] },
   { group: "CON NGƯỜI", items: [
     { title: "Khách hàng", icon: "customers" },

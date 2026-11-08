@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Package, X } from 'lucide-react';
 import WorkspaceLayout from '../../components/WorkspaceLayout';
 import { getEmployeeDeliveries, getEmployeeDelivery, startEmployeeDelivery, succeedEmployeeDelivery, failEmployeeDelivery } from '../../services/orderService';
@@ -23,7 +24,12 @@ function Popup({mode,record,reason,setReason,onClose,onSubmit,busy,error}){
   <div className="nvgh-actions"><button className="nvgh-outline" disabled={busy} onClick={onClose}>Quay lại</button><button className="nvgh-primary" disabled={busy||(failed&&reason.trim().length<5)} onClick={onSubmit}>{busy?'Đang xử lý...':failed?'Xác nhận kết quả':'Xác nhận thành công'}</button></div>
  </section></div>
 }
-export default function QuanLyGiaoHangNhanVien({user}){
+export default function QuanLyGiaoHangNhanVien({user,mode: passedMode}){
+ // Sidebar phải dựa vào khu vực URL, không dựa vào tên component dùng chung.
+ const { pathname } = useLocation();
+ const mode = pathname.startsWith('/quan-ly/') ? 'manager'
+   : pathname.startsWith('/nhan-vien/') ? 'employee'
+   : passedMode === 'manager' ? 'manager' : 'employee';
  const [filters,setFilters]=useState({q:'',trangThai:'',tuNgay:'',denNgay:''}),[applied,setApplied]=useState({});
  const [rows,setRows]=useState([]),[selected,setSelected]=useState(null),[detail,setDetail]=useState(null);
  const [loading,setLoading]=useState(true),[loadingDetail,setLoadingDetail]=useState(false),[busy,setBusy]=useState(false);
@@ -35,8 +41,8 @@ export default function QuanLyGiaoHangNhanVien({user}){
  const refresh=()=>setRevision(v=>v+1);
  async function start(){setBusy(true);setError('');setMessage('');try{await startEmployeeDelivery(detail.MaGiaoHang);setMessage('Đã bắt đầu giao hàng.');refresh()}catch(e){setError(e.message)}finally{setBusy(false)}}
  async function save(){setBusy(true);setPopupError('');try{if(popup==='success')await succeedEmployeeDelivery(detail.MaGiaoHang);else await failEmployeeDelivery(detail.MaGiaoHang,reason.trim());setMessage(popup==='success'?'Giao thành công, đơn hàng đã hoàn tất và xuất kho.':'Đã ghi nhận giao không thành công.');setPopup('');refresh()}catch(e){setPopupError(e.message)}finally{setBusy(false)}}
- return <WorkspaceLayout user={user} mode="employee" activeTitle="Giao hàng"><section className="nvgh">
-  <div className="workspace-breadcrumb">Vận hành / Giao hàng / Quản lý giao hàng</div>
+ return <WorkspaceLayout user={user} mode={mode} activeTitle="Giao hàng"><section className="nvgh">
+  <div className="workspace-breadcrumb">{mode === "employee" ? "Vận hành" : "Quản trị"} / Giao hàng / Quản lý giao hàng</div>
   <h1>Quản lý giao hàng</h1><p className="nvgh-sub">Theo dõi bàn giao và ghi nhận kết quả giao hàng. Đơn chờ xác nhận chưa có mã giao hàng.</p>
   <form className="nvgh-filters" onSubmit={e=>{e.preventDefault();setApplied(filters);setSelected(null);setError('')}}>
    <label className="nvgh-field">Mã giao hàng / mã đơn / số điện thoại<input value={filters.q} placeholder="Tìm kiếm..." onChange={e=>updateFilter('q',e.target.value)}/></label>

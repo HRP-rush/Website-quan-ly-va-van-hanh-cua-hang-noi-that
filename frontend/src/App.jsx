@@ -1,3 +1,4 @@
+import QuanLyDonHangQuanLy from "./pages/management/QuanLyDonHangQuanLy";
 import QuanLyGiaoHangNhanVien from "./pages/employee/QuanLyGiaoHangNhanVien";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/customer/Home";
@@ -66,6 +67,10 @@ export default function App() {
         {(user) => <TaoPhieuNhapNhanVien user={user}/>}</RoleGate>}/>
       <Route path="/nhan-vien/nhap-kho/:maPhieuNhap" element={<RoleGate allow={["Nhân viên"]}>
         {(user) => <TaoPhieuNhapNhanVien user={user}/>}</RoleGate>}/>
+      <Route path="/quan-ly/don-hang" element={<RoleGate allow={["Quản lý"]}>{(user) => <QuanLyDonHangQuanLy user={user}/>}</RoleGate>}/>
+      <Route path="/quan-ly/don-hang/:id" element={<RoleGate allow={["Quản lý"]}>{(user) => <ChiTietDonHangNhanVien user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/quan-ly/don-hang/:id/cap-nhat" element={<RoleGate allow={["Quản lý"]}>{(user) => <CapNhatTrangThaiDonNhanVien user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/quan-ly/giao-hang" element={<RoleGate allow={["Quản lý"]}>{(user) => <QuanLyGiaoHangNhanVien user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/quan-ly" element={<RoleGate allow={["Quản lý"]}>
         {(user) => <ManagementDashboard user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/admin" element={<RoleGate allow={["Admin"]}>
