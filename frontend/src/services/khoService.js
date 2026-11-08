@@ -23,3 +23,37 @@ export async function getStockDetail(maBienThe) {
   const res = await fetch(`${API_URL}/api/kho/ton-kho/${encodeURIComponent(maBienThe)}`, { credentials: "include" });
   return (await parse(res)).data; // { bienThe, lichSu, lechSo, phieuNhapNhap }
 }
+
+export async function listSuppliers(params = {}) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== "" && value != null) qs.set(key, value);
+  });
+  const res = await fetch(`${API_URL}/api/kho/nha-cung-cap?${qs}`, { credentials: "include" });
+  return parse(res);
+}
+
+export async function getSupplierDetail(maNCC) {
+  const res = await fetch(`${API_URL}/api/kho/nha-cung-cap/${encodeURIComponent(maNCC)}`, { credentials: "include" });
+  return (await parse(res)).data;
+}
+
+export async function createSupplier(data) {
+  const res = await fetch(`${API_URL}/api/kho/nha-cung-cap`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+  return (await parse(res)).data;
+}
+
+export async function updateSupplierStatus(maNCC, trangThai) {
+  const res = await fetch(`${API_URL}/api/kho/nha-cung-cap/${encodeURIComponent(maNCC)}/trang-thai`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ trangThai })
+  });
+  return parse(res);
+}

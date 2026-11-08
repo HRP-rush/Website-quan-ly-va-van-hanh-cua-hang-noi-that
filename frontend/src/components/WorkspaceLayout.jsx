@@ -34,7 +34,7 @@ const managementNav = [
   { group: "KHO & CUNG ỨNG", items: [
     { title: "Kho hàng", icon: "inventory", path: "/kho-hang" },
     { title: "Phiếu nhập", icon: "receipts" },
-    { title: "Nhà cung cấp", icon: "suppliers" }
+    { title: "Nhà cung cấp", icon: "suppliers", path: "/nha-cung-cap" }
   ] },
   { group: "BÁN HÀNG", items: [
     { title: "Đơn hàng", icon: "orders" },
