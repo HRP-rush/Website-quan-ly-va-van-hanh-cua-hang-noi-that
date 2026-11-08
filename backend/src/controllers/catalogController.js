@@ -38,7 +38,8 @@ const base = `
     ORDER BY CASE WHEN ISNULL(t.SoLuongTon, 0) > ISNULL(holdStock.DaGiu, 0) THEN 0 ELSE 1 END,
              b.MaBienThe
   ) variant
-  WHERE sp.TrangThai = N'Đang bán'`;
+  WHERE sp.TrangThai = N'Đang bán'
+    AND dm.HienThi = 1`;
 async function danhSach(req,res){
  try {
   const pool=await getPool();

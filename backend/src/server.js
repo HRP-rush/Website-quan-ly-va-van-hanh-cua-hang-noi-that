@@ -57,6 +57,7 @@ app.get("/api/health/db", async (req, res) => {
   }
 });
 
+app.use("/api/danh-muc", require("./routes/danhMucRoutes"));
 app.use("/api/san-pham", sanPhamRoutes);
 
 const loginLimiter = rateLimit({
