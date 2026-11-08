@@ -247,4 +247,71 @@ function capNhatPhieuNhap(req, res) {
   return luuPhieu(req, res, id);
 }
 
-module.exports = { layDanhSachPhieuNhap, layKhoiTaoPhieu, layPhieuNhap, taoPhieuNhap, capNhatPhieuNhap };
+// Chi tiết (chỉ đọc) của một phiếu nhập: thông tin phiếu, các dòng SKU, giao dịch kho tương ứng
+async function layChiTietPhieuNhap(req, res) {
+  const id = Number(req.params.maPhieuNhap);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ success: false, message: "Mã phiếu không hợp lệ." });
+  try {
+    const pool = await getPool();
+    const tao = () => pool.request().input("id", sql.Int, id);
+    const [h, d] = await Promise.all([
+      tao().query(`
+        SELECT pn.MaPhieuNhap, pn.TrangThai, pn.GhiChu,
+               FORMAT(pn.NgayNhap, 'dd/MM/yyyy') AS Ngay,
+               -- Phiếu tạo từ biểu mẫu chỉ lưu ngày (00:00): không hiện giờ giả
+               CASE WHEN CAST(pn.NgayNhap AS TIME) = '00:00:00' THEN NULL ELSE FORMAT(pn.NgayNhap, 'HH:mm') END AS Gio,
+               ncc.TenNCC, 'NCC-' + RIGHT('000' + CAST(ncc.MaNCC AS VARCHAR(10)), 3) AS MaNCC,
+               COALESCE(nd.HoTen, nd.Email) AS NguoiLap
+        FROM dbo.PhieuNhap pn
+        INNER JOIN dbo.NhaCungCap ncc ON ncc.MaNCC = pn.MaNCC
+        INNER JOIN dbo.NguoiDung nd ON nd.MaNguoiDung = pn.MaNguoiDung
+        WHERE pn.MaPhieuNhap = @id`),
+      tao().query(`
+        SELECT ct.MaCTNhap, b.SKU, b.ChatLieu, b.MauSac, b.KichThuoc, ct.SoLuong, ct.DonGiaNhap,
+               g.MaGiaoDich,
+               CONVERT(VARCHAR(19), g.NgayGiaoDich, 126) AS ThoiDiemGD,
+               'GD-' + FORMAT(g.NgayGiaoDich, 'yyyyMMdd') + '-' + RIGHT('000' + CAST(g.MaGiaoDich AS VARCHAR(10)), 3) AS MaGD,
+               -- Tồn ngay sau lần nhập này = tồn hiện tại trừ các giao dịch SAU nó của cùng SKU
+               CASE WHEN g.MaGiaoDich IS NULL THEN NULL ELSE
+                 ISNULL(t.SoLuongTon, 0) - ISNULL((
+                   SELECT SUM(g2.SoLuongThayDoi) FROM dbo.GiaoDichKho g2
+                   WHERE g2.MaBienThe = ct.MaBienThe
+                     AND (g2.NgayGiaoDich > g.NgayGiaoDich OR (g2.NgayGiaoDich = g.NgayGiaoDich AND g2.MaGiaoDich > g.MaGiaoDich))), 0)
+               END AS TonSau
+        FROM dbo.CTPhieuNhap ct
+        INNER JOIN dbo.BienTheSanPham b ON b.MaBienThe = ct.MaBienThe
+        LEFT JOIN dbo.GiaoDichKho g ON g.MaCTNhap = ct.MaCTNhap
+        LEFT JOIN dbo.TonKho t ON t.MaBienThe = ct.MaBienThe
+        WHERE ct.MaPhieuNhap = @id
+        ORDER BY ct.MaCTNhap`)
+    ]);
+    if (!h.recordset.length) return res.status(404).json({ success: false, message: "Không tìm thấy phiếu nhập." });
+
+    const dong = d.recordset.map((r) => ({
+      SKU: r.SKU, ChatLieu: r.ChatLieu, MauSac: r.MauSac, KichThuoc: r.KichThuoc,
+      SoLuong: r.SoLuong, DonGiaNhap: r.DonGiaNhap, ThanhTien: r.SoLuong * r.DonGiaNhap,
+      TonSau: r.TonSau, TonTruoc: r.TonSau == null ? null : r.TonSau - r.SoLuong
+    }));
+    const giaoDich = d.recordset.filter((r) => r.MaGiaoDich != null);
+    const dauTien = giaoDich.length ? giaoDich.reduce((a, b) => (b.MaGiaoDich < a.MaGiaoDich ? b : a)) : null;
+    const somNhat = giaoDich.length ? giaoDich.map((r) => r.ThoiDiemGD).sort()[0] : null;
+
+    res.json({
+      success: true,
+      data: {
+        phieu: { ...h.recordset[0], MaPhieu: maHienThi(id) },
+        dong,
+        tongTien: dong.reduce((s, r) => s + r.ThanhTien, 0),
+        tongSoLuong: dong.reduce((s, r) => s + r.SoLuong, 0),
+        maGiaoDich: dauTien ? dauTien.MaGD : null,
+        soGiaoDich: giaoDich.length,
+        gioGhiNhan: somNhat ? somNhat.slice(11, 16) : null   // "HH:mm" lúc ghi vào kho
+      }
+    });
+  } catch (error) {
+    console.error("Lỗi lấy chi tiết phiếu nhập:", error.message);
+    res.status(500).json({ success: false, message: "Không thể lấy chi tiết phiếu nhập." });
+  }
+}
+
+module.exports = { layDanhSachPhieuNhap, layKhoiTaoPhieu, layPhieuNhap, taoPhieuNhap, capNhatPhieuNhap, layChiTietPhieuNhap };
