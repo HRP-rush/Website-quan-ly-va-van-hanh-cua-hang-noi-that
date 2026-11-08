@@ -32,6 +32,11 @@ import DanhSachPhieuNhap from "./pages/management/DanhSachPhieuNhap";
 import TaoPhieuNhap from "./pages/management/TaoPhieuNhap";
 import TaoPhieuNhapNhanVien from "./pages/employee/TaoPhieuNhapNhanVien";
 import ThanhToan from "./pages/customer/ThanhToan";
+import QuanLyConNguoi from "./pages/management/QuanLyConNguoi";
+import QuanLyPhanHoi from "./pages/management/QuanLyPhanHoi";
+import TaiKhoanCuaToi from "./pages/management/TaiKhoanCuaToi";
+import ThietLapTaiKhoan from "./pages/customer/ThietLapTaiKhoan";
+import ThongTinCaNhan from "./pages/customer/ThongTinCaNhan";
 
 export default function App() {
   return <BrowserRouter>
@@ -78,8 +83,7 @@ export default function App() {
       <Route path="/admin" element={<RoleGate allow={["Admin"]}>
         {(user) => <ManagementDashboard user={user} mode="admin"/>}</RoleGate>}/>
       {/* Trang hồ sơ CUS-15 sẽ được xây dựng sau; tạm về trang chủ nếu có phiên khách */}
-      <Route path="/tai-khoan" element={<RoleGate allow={["Khách hàng"]}>
-        {() => <Navigate to="/tai-khoan/don-hang" replace/>}</RoleGate>}/>
+      <Route path="/tai-khoan"element={<RoleGate allow={["Khách hàng"]}>{() => <ThongTinCaNhan />}</RoleGate>}/>
       <Route path="/tai-khoan/don-hang" element={<RoleGate allow={["Khách hàng"]}>
         {(user) => <DanhSachDonHang user={user}/>}</RoleGate>}/>
       <Route path="/tai-khoan/don-hang/:id" element={<RoleGate allow={["Khách hàng"]}>
@@ -140,6 +144,66 @@ export default function App() {
         {(user) => <TaoPhieuNhap user={user} mode="admin"/>}</RoleGate>}/>
       <Route path="/admin/phieu-nhap/:maPhieuNhap/sua" element={<RoleGate allow={["Admin"]}>
         {(user) => <TaoPhieuNhap user={user} mode="admin"/>}</RoleGate>}/>
+        <Route
+          path="/thiet-lap-tai-khoan"
+          element={<ThietLapTaiKhoan />}
+        />
+
+        {[
+          ["/quan-ly", "Quản lý", "manager"],
+          ["/admin", "Admin", "admin"],
+        ].flatMap(([base, role, mode]) => [
+          <Route
+            key={`${base}/khach-hang`}
+            path={`${base}/khach-hang`}
+            element={
+              <RoleGate allow={[role]}>
+                {(user) => (
+                  <QuanLyConNguoi
+                    key="customers"
+                    user={user}
+                    mode={mode}
+                    group="khach-hang"
+                  />
+                )}
+              </RoleGate>
+            }
+          />,
+          <Route
+            key={`${base}/nhan-vien`}
+            path={`${base}/nhan-vien`}
+            element={
+              <RoleGate allow={[role]}>
+                {(user) => (
+                  <QuanLyConNguoi
+                    key="staff"
+                    user={user}
+                    mode={mode}
+                    group="nhan-vien"
+                  />
+                )}
+              </RoleGate>
+            }
+          />,
+          <Route
+            key={`${base}/phan-hoi`}
+            path={`${base}/phan-hoi`}
+            element={
+              <RoleGate allow={[role]}>
+                {(user) => <QuanLyPhanHoi user={user} mode={mode} />}
+              </RoleGate>
+            }
+          />,
+          <Route
+            key={`${base}/tai-khoan`}
+            path={`${base}/tai-khoan`}
+            element={
+              <RoleGate allow={[role]}>
+                {(user) => <TaiKhoanCuaToi user={user} mode={mode} />}
+              </RoleGate>
+            }
+          />,
+        ])}
       <Route path="*" element={<Navigate to="/" replace/>}/>
     </Routes>
   </BrowserRouter>;

@@ -73,7 +73,25 @@ export default function AccountMenu() {
       document.removeEventListener("keydown", handleEscape);
     };
   }, []);
+  useEffect(() => {
+    function updateProfile(event) {
+      if (event.detail?.MaNguoiDung) {
+        setUser(event.detail);
+      }
+    }
 
+    window.addEventListener(
+      "mocan-profile-change",
+      updateProfile
+    );
+
+    return () => {
+      window.removeEventListener(
+        "mocan-profile-change",
+        updateProfile
+      );
+    };
+  }, []);
   async function handleLogout() {
     setError("");
 
@@ -165,7 +183,16 @@ export default function AccountMenu() {
                   Trang làm việc
                 </Link>
               )}
-
+              {user.TenVaiTro === "Khách hàng" && (
+                <Link
+                  to="/tai-khoan"
+                  className="account-dropdown-item"
+                  onClick={closeMenu}
+                >
+                  <UserRound size={17} />
+                  Thông tin cá nhân
+                </Link>
+              )}
               <button
                 type="button"
                 className="account-dropdown-item account-logout"

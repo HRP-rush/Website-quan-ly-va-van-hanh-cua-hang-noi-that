@@ -60,6 +60,8 @@ app.get("/api/health/db", async (req, res) => {
 
 app.use("/api/danh-muc", require("./routes/danhMucRoutes"));
 app.use("/api/san-pham", sanPhamRoutes);
+app.use("/api/con-nguoi", require("./routes/conNguoiRoutes"));
+app.use("/api/phan-hoi", require("./routes/phanHoiRoutes"));
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -118,3 +120,4 @@ app.use("/api", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Backend đang chạy tại http://localhost:${PORT}`);
 });
+
