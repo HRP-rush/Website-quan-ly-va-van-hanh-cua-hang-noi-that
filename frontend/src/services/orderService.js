@@ -44,3 +44,11 @@ export function updateOrderStatus(id, status) {
     body: JSON.stringify({ trangThai: status })
   });
 }
+
+export function getEmployeeOrders(filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => { if (value !== undefined && value !== null && value !== "") params.set(key, String(value)); });
+  return request(`/nhan-vien/danh-sach?${params}`);
+}
+export function getEmployeeOrder(id) { return request(`/nhan-vien/${encodeURIComponent(id)}/chi-tiet`); }
+export function checkEmployeeOrderStock(id) { return request(`/nhan-vien/${encodeURIComponent(id)}/kiem-tra-ton`); }

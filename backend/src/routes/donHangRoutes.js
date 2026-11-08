@@ -1,6 +1,9 @@
 const express = require("express");
 
 const {
+  danhSachDonNhanVien,
+  chiTietDonNhanVien,
+  kiemTraTonDonNhanVien,
   layLichSuDonHang,
   theoDoiDonHang,
   locDonHangTheoTrangThai,
@@ -15,6 +18,10 @@ const {
 const { datHang } = require("../controllers/datHangController");
 
 const router = express.Router();
+
+router.get("/nhan-vien/danh-sach", xacThuc, choPhepVaiTro("Nhân viên", "Quản lý", "Admin"), danhSachDonNhanVien);
+router.get("/nhan-vien/:id/chi-tiet", xacThuc, choPhepVaiTro("Nhân viên", "Quản lý", "Admin"), chiTietDonNhanVien);
+router.get("/nhan-vien/:id/kiem-tra-ton", xacThuc, choPhepVaiTro("Nhân viên", "Quản lý", "Admin"), kiemTraTonDonNhanVien);
 
 router.post(
   "/tao-moi",
