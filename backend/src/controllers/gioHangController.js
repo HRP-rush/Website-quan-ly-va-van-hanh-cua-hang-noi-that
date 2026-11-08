@@ -23,11 +23,13 @@ function laMaBienTheHopLe(value) {
 function ganTrangThai(item) {
   const khaDung = Math.max(Number(item.SoLuongTon) - Number(item.DaGiu || 0), 0);
   const tinhTrangKho =
-    item.TrangThai !== "Đang bán" || item.TrangThaiSanPham !== "Đang bán"
-      ? "Ngừng bán"
-      : khaDung > 0
-        ? "Còn hàng"
-        : "Hết hàng";
+  item.TrangThai !== "Đang bán" ||
+  item.TrangThaiSanPham !== "Đang bán" ||
+  !item.DanhMucHienThi
+    ? "Ngừng bán"
+    : khaDung > 0
+      ? "Còn hàng"
+      : "Hết hàng";
 
   return { ...item, SoLuongKhaDung: khaDung, TinhTrangKho: tinhTrangKho };
 }
@@ -52,11 +54,13 @@ async function layThongTinTonKho(request, khoaTonKho = false) {
       sp.MaSanPham,
       sp.TenSanPham,
       sp.TrangThai AS TrangThaiSanPham,
+      dm.HienThi AS DanhMucHienThi,
       ISNULL(t.SoLuongTon, 0) AS SoLuongTon,
       ISNULL(g.DaGiu, 0) AS DaGiu,
       anh.DuongDan
     FROM dbo.BienTheSanPham b
     INNER JOIN dbo.SanPham sp ON sp.MaSanPham = b.MaSanPham
+    INNER JOIN dbo.DanhMuc dm ON dm.MaDanhMuc = sp.MaDanhMuc
     LEFT JOIN dbo.TonKho t${khoa} ON t.MaBienThe = b.MaBienThe
     OUTER APPLY (
       SELECT SUM(ct.SoLuong) AS DaGiu
@@ -105,7 +109,7 @@ async function kiemTraTonKho(req, res) {
     );
     const item = result.recordset[0];
 
-    if (!item) {
+    if (!item || !item.DanhMucHienThi) {
       return res.status(404).json({
         success: false,
         message: "Sản phẩm chưa có biến thể bán hàng hoặc không tìm thấy thông tin tồn kho."
@@ -374,8 +378,9 @@ async function themSanPham(req, res) {
 }
 
 async function capNhatSoLuong(req, res) {
-  const maCTGio = Number(req.body.maCTGio);
-  const soLuong = Number(req.body.soLuong);
+  const maCTGio = Number(req.body?.maCTGio);
+  const soLuong = Number(req.body?.soLuong);
+
   if (
     !laSoNguyenDuong(maCTGio) ||
     !laSoNguyenDuong(soLuong) ||
@@ -384,44 +389,93 @@ async function capNhatSoLuong(req, res) {
   ) {
     return res.status(400).json({
       success: false,
-      message: "Mã sản phẩm trong giỏ và số lượng phải là số nguyên dương."
+      message:
+        "Mã sản phẩm trong giỏ và số lượng phải là số nguyên dương."
     });
   }
 
   let transaction;
   let transactionStarted = false;
+
   try {
     const pool = await getPool();
+
     transaction = new sql.Transaction(pool);
     await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
     transactionStarted = true;
+
     const itemResult = await new sql.Request(transaction)
       .input("maCTGio", sql.Int, maCTGio)
       .input("maNguoiDung", sql.Int, req.user.MaNguoiDung)
       .query(`
-        SELECT ct.MaCTGio
+        SELECT ct.MaCTGio, ct.MaBienThe
         FROM dbo.CTGioHang ct WITH (UPDLOCK, HOLDLOCK)
         INNER JOIN dbo.GioHang gh ON gh.MaGio = ct.MaGio
-        WHERE ct.MaCTGio = @maCTGio AND gh.MaNguoiDung = @maNguoiDung
+        WHERE ct.MaCTGio = @maCTGio
+          AND gh.MaNguoiDung = @maNguoiDung
       `);
 
-    if (!itemResult.recordset[0]) throw loi(404, "Không tìm thấy sản phẩm trong giỏ hàng.");
+    const item = itemResult.recordset[0];
+
+    if (!item) {
+      throw loi(
+        404,
+        "Không tìm thấy sản phẩm trong giỏ hàng."
+      );
+    }
+
+    const stock = await layThongTinTonKho(
+      new sql.Request(transaction)
+        .input(
+          "maBienThe",
+          sql.VarChar(80),
+          String(item.MaBienThe)
+        )
+        .input("maSanPham", sql.VarChar(50), null),
+      true
+    );
+
+    const available = stock.recordset[0]
+      ? ganTrangThai(stock.recordset[0])
+      : null;
+
+    if (
+      !available ||
+      available.TinhTrangKho !== "Còn hàng" ||
+      soLuong > available.SoLuongKhaDung
+    ) {
+      throw loi(
+        409,
+        "Số lượng vượt tồn kho hoặc sản phẩm đã ngừng bán."
+      );
+    }
 
     await new sql.Request(transaction)
       .input("maCTGio", sql.Int, maCTGio)
       .input("soLuong", sql.Int, soLuong)
-      .query("UPDATE dbo.CTGioHang SET SoLuong = @soLuong WHERE MaCTGio = @maCTGio");
+      .query(`
+        UPDATE dbo.CTGioHang
+        SET SoLuong = @soLuong
+        WHERE MaCTGio = @maCTGio
+      `);
+
     await transaction.commit();
-    return res.json({ success: true, message: "Đã cập nhật số lượng sản phẩm." });
+    transactionStarted = false;
+
+    return res.json({
+      success: true,
+      message: "Đã cập nhật số lượng sản phẩm."
+    });
   } catch (error) {
-    if (transactionStarted) await transaction.rollback();
-    if (error.status) {
-      return res.status(error.status).json({ success: false, message: error.message });
+    if (transactionStarted) {
+      await transaction.rollback().catch(() => {});
     }
-    console.error("Lỗi cập nhật số lượng giỏ hàng:", error.message);
-    return res.status(500).json({
+
+    return res.status(error.status || 500).json({
       success: false,
-      message: "Không thể cập nhật số lượng sản phẩm."
+      message: error.status
+        ? error.message
+        : "Không thể cập nhật số lượng sản phẩm."
     });
   }
 }

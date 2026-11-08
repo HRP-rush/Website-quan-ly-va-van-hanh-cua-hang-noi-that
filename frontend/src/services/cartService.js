@@ -91,28 +91,13 @@ function isSameCartItem(storedItem, item) {
 }
 
 export async function getCart() {
-  try {
-    const result = await request("/");
-    const items = result.data.map(mapServerItem);
-    thongBaoThayDoi(items);
-    return items;
-  } catch (error) {
-    if (error.status === 401) {
-      const items = mapGuestItems(readGuestCart());
-      thongBaoThayDoi(items);
-      return items;
-    }
-    if (error instanceof TypeError) {
-      const items = mapGuestItems(readGuestCart());
-      if (items.length > 0) {
-        thongBaoThayDoi(items);
-        return items;
-      }
-    }
-    throw error;
-  }
-}
+  const result = await request("/");
+  const items = result.data.map(mapServerItem);
 
+  thongBaoThayDoi(items);
+
+  return items;
+}
 export async function getCartTotal() {
   const result = await request("/tinh-tong-tien");
   return result.data;
@@ -159,18 +144,47 @@ export async function checkCartStock(maBienThe, maSanPham) {
   return result.data;
 }
 
-export async function addProductToCart(product) {
-  if (!product.id) throw new Error("Không xác định được mã sản phẩm trong cơ sở dữ liệu.");
+export async function addProductToCart(
+  product,
+  quantity = 1
+) {
+  if (
+    !Number.isSafeInteger(quantity) ||
+    quantity < 1 ||
+    quantity > 2147483647
+  ) {
+    throw new Error(
+      "Số lượng phải là số nguyên dương hợp lệ."
+    );
+  }
 
-  if (Number(product.stock) < 1 || !product.variantId) {
-    throw new Error("Sản phẩm hiện đã hết hàng hoặc chưa có biến thể bán.");
+  if (!product.id) {
+    throw new Error(
+      "Không xác định được mã sản phẩm."
+    );
+  }
+
+  if (
+    !product.variantId ||
+    Number(product.stock) < 1
+  ) {
+    throw new Error(
+      "Sản phẩm đã hết hàng hoặc chưa có biến thể bán."
+    );
   }
 
   const result = await request("/them-san-pham", {
     method: "POST",
-    body: JSON.stringify({ maBienThe: String(product.variantId), soLuong: 1 })
+    body: JSON.stringify({
+      maBienThe: String(product.variantId),
+      soLuong: quantity
+    })
   });
-  thongBaoSoLuong(Number(result.data?.SoLuongTrongGio || 0));
+
+  thongBaoSoLuong(
+    Number(result.data?.SoLuongTrongGio || 0)
+  );
+
   return result;
 }
 
