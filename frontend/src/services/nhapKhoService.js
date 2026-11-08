@@ -18,3 +18,22 @@ export async function listReceipts(params) {
   const res = await fetch(`${API_URL}/api/nhap-kho/phieu-nhap?${qs}`, { credentials: "include" });
   return parse(res); // { data, total, tongQuan, trang, soDong }
 }
+
+export async function getReceiptForm() {
+  const res = await fetch(`${API_URL}/api/nhap-kho/khoi-tao-phieu`, { credentials: "include" });
+  return (await parse(res)).data; // { nhaCungCap, bienThe, nguoiLap }
+}
+
+export async function getReceipt(maPhieuNhap) {
+  const res = await fetch(`${API_URL}/api/nhap-kho/phieu-nhap/${encodeURIComponent(maPhieuNhap)}`, { credentials: "include" });
+  return (await parse(res)).data; // { phieu, dong }
+}
+
+// maPhieuNhap = null -> tạo mới; có giá trị -> cập nhật phiếu nháp. body.ghiNhan = true để ghi nhận luôn.
+export async function saveReceipt(maPhieuNhap, body) {
+  const res = await fetch(`${API_URL}/api/nhap-kho/phieu-nhap${maPhieuNhap ? `/${encodeURIComponent(maPhieuNhap)}` : ""}`, {
+    method: maPhieuNhap ? "PUT" : "POST", credentials: "include",
+    headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+  });
+  return parse(res); // { data: { MaPhieuNhap, MaPhieu, TrangThai } }
+}

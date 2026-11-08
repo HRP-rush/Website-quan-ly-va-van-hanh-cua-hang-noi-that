@@ -15,6 +15,7 @@ import ChiTietTonKho from "./pages/management/ChiTietTonKho";
 import Catalog from "./pages/customer/Catalog";
 import ProductDetail from "./pages/customer/ProductDetail";
 import DanhSachPhieuNhap from "./pages/management/DanhSachPhieuNhap";
+import TaoPhieuNhap from "./pages/management/TaoPhieuNhap";
 
 export default function App() {
   return <BrowserRouter>
@@ -67,6 +68,14 @@ export default function App() {
         {(user) => <DanhSachPhieuNhap user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/admin/phieu-nhap" element={<RoleGate allow={["Admin"]}>
         {(user) => <DanhSachPhieuNhap user={user} mode="admin"/>}</RoleGate>}/>
+      <Route path="/quan-ly/phieu-nhap/tao" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => <TaoPhieuNhap user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/quan-ly/phieu-nhap/:maPhieuNhap/sua" element={<RoleGate allow={["Quản lý"]}>
+        {(user) => <TaoPhieuNhap user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/admin/phieu-nhap/tao" element={<RoleGate allow={["Admin"]}>
+        {(user) => <TaoPhieuNhap user={user} mode="admin"/>}</RoleGate>}/>
+      <Route path="/admin/phieu-nhap/:maPhieuNhap/sua" element={<RoleGate allow={["Admin"]}>
+        {(user) => <TaoPhieuNhap user={user} mode="admin"/>}</RoleGate>}/>
       <Route path="*" element={<Navigate to="/" replace/>}/>
     </Routes>
   </BrowserRouter>;

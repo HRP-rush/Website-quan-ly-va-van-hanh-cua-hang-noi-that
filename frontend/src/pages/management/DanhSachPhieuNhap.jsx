@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Plus, Info, AlertTriangle } from "lucide-react";
 import WorkspaceLayout from "../../components/WorkspaceLayout";
 import { listReceipts } from "../../services/nhapKhoService";
@@ -27,6 +28,10 @@ function Khung({ user, mode, children }) {
 }
 
 export default function DanhSachPhieuNhap({ user, mode }) {
+  const navigate = useNavigate();
+  const { state } = useLocation();
+  const base = mode === "admin" ? "/admin" : "/quan-ly";
+  const [flash, setFlash] = useState(state?.flash || "");
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [trangThai, setTrangThai] = useState("");
@@ -36,6 +41,13 @@ export default function DanhSachPhieuNhap({ user, mode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [capNhat, setCapNhat] = useState("");
+
+  // Thông báo sau khi lưu phiếu tự ẩn sau 5 giây
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(""), 5000);
+    return () => clearTimeout(t);
+  }, [flash]);
 
   // Chờ người dùng ngừng gõ 400ms rồi mới gọi API
   useEffect(() => {
@@ -63,7 +75,7 @@ export default function DanhSachPhieuNhap({ user, mode }) {
     <div className="pn-head">
       <div className="workspace-head"><h1>Danh sách phiếu nhập kho</h1>
         <p>Quản lý chứng từ nhập hàng và theo dõi các lần ghi nhận vào kho.</p></div>
-      <button type="button" className="pn-btn" disabled title={chuaCo}><Plus size={15}/> Tạo phiếu nhập</button>
+      <button type="button" className="pn-btn" onClick={() => navigate(`${base}/phieu-nhap/tao`)}><Plus size={15}/> Tạo phiếu nhập</button>
     </div>
 
     <div className="pn-kpis">
@@ -86,6 +98,7 @@ export default function DanhSachPhieuNhap({ user, mode }) {
           {KHOANG.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></label>
     </div>
 
+    {flash && <div className="pn-flash" role="status">{flash}</div>}
     {error && <div className="pn-alert" role="alert">{error}</div>}
 
     <div className={`workspace-table-scroll pn-table ${loading ? "is-loading" : ""}`}>
@@ -96,7 +109,9 @@ export default function DanhSachPhieuNhap({ user, mode }) {
             <td>{p.MaPhieu}</td><td>{p.TenNCC}</td><td>{p.NgayNhap}</td><td>{p.NguoiLap}</td>
             <td>{p.SoSku}</td><td>{fmtTien(p.TongTien)}</td>
             <td><span className={`pn-chip ${LOP[p.TrangThai] || "stopped"}`}>{NHAN[p.TrangThai] || p.TrangThai}</span></td>
-            <td className="pn-actions"><span title={chuaCo}>{p.TrangThai === NHAP ? "Tiếp tục lập" : "Xem chi tiết →"}</span></td>
+            <td className="pn-actions">{p.TrangThai === NHAP
+              ? <button type="button" onClick={() => navigate(`${base}/phieu-nhap/${p.MaPhieuNhap}/sua`)}>Tiếp tục lập</button>
+              : <span title={chuaCo}>Xem chi tiết →</span>}</td>
           </tr>)}
           {!loading && kq.data.length === 0 && <tr><td colSpan={8} className="pn-empty">
             {q || trangThai || khoang ? "Không có phiếu nhập phù hợp với bộ lọc." : "Chưa có phiếu nhập nào."}</td></tr>}
