@@ -1,9 +1,15 @@
+import ThongKeBaoCao from "./pages/management/ThongKeBaoCao";
+import QuanLyDonHangQuanLy from "./pages/management/QuanLyDonHangQuanLy";
+import QuanLyGiaoHangNhanVien from "./pages/employee/QuanLyGiaoHangNhanVien";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/customer/Home";
 import Login from "./pages/customer/Login";
 import Register from "./pages/customer/Register";
 import RoleGate from "./components/RoleGate";
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
+import QuanLyDonHang from "./pages/employee/QuanLyDonHang";
+import ChiTietDonHangNhanVien from "./pages/employee/ChiTietDonHangNhanVien";
+import CapNhatTrangThaiDonNhanVien from "./pages/employee/CapNhatTrangThaiDonNhanVien";
 import LichSuKhoNhanVien from "./pages/employee/LichSuKhoNhanVien";
 import TraCuuTonKho from "./pages/employee/TraCuuTonKho";
 import ManagementDashboard from "./pages/management/ManagementDashboard";
@@ -51,6 +57,14 @@ export default function App() {
       {/* Route được bảo vệ; Backend cũng phải kiểm tra quyền ở API nghiệp vụ. */}
       <Route path="/nhan-vien" element={<RoleGate allow={["Nhân viên"]}>
         {(user) => <EmployeeDashboard user={user}/>}</RoleGate>}/>
+      <Route path="/nhan-vien/don-hang" element={<RoleGate allow={["Nhân viên"]}>
+        {(user) => <QuanLyDonHang user={user}/>}</RoleGate>}/>
+      <Route path="/nhan-vien/don-hang/:id" element={<RoleGate allow={["Nhân viên"]}>
+        {(user) => <ChiTietDonHangNhanVien user={user}/>}</RoleGate>}/>
+      <Route path="/nhan-vien/don-hang/:id/cap-nhat" element={<RoleGate allow={["Nhân viên"]}>
+        {(user) => <CapNhatTrangThaiDonNhanVien user={user}/>}</RoleGate>}/>
+      <Route path="/nhan-vien/giao-hang" element={<RoleGate allow={["Nhân viên"]}>
+        {(user) => <QuanLyGiaoHangNhanVien user={user}/>}</RoleGate>}/>
       <Route path="/nhan-vien/ton-kho" element={<RoleGate allow={["Nhân viên"]}>
         {(user) => <TraCuuTonKho user={user}/>}</RoleGate>}/>
       <Route path="/nhan-vien/lich-su-kho" element={<RoleGate allow={["Nhân viên"]}>
@@ -59,6 +73,11 @@ export default function App() {
         {(user) => <TaoPhieuNhapNhanVien user={user}/>}</RoleGate>}/>
       <Route path="/nhan-vien/nhap-kho/:maPhieuNhap" element={<RoleGate allow={["Nhân viên"]}>
         {(user) => <TaoPhieuNhapNhanVien user={user}/>}</RoleGate>}/>
+      <Route path="/quan-ly/don-hang" element={<RoleGate allow={["Quản lý"]}>{(user) => <QuanLyDonHangQuanLy user={user}/>}</RoleGate>}/>
+      <Route path="/quan-ly/don-hang/:id" element={<RoleGate allow={["Quản lý"]}>{(user) => <ChiTietDonHangNhanVien user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/quan-ly/don-hang/:id/cap-nhat" element={<RoleGate allow={["Quản lý"]}>{(user) => <CapNhatTrangThaiDonNhanVien user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/quan-ly/giao-hang" element={<RoleGate allow={["Quản lý"]}>{(user) => <QuanLyGiaoHangNhanVien user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/quan-ly/thong-ke-bao-cao" element={<RoleGate allow={["Quản lý"]}>{(user) => <ThongKeBaoCao user={user}/>}</RoleGate>}/>
       <Route path="/quan-ly" element={<RoleGate allow={["Quản lý"]}>
         {(user) => <ManagementDashboard user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/admin" element={<RoleGate allow={["Admin"]}>

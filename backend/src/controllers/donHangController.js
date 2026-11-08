@@ -393,12 +393,16 @@ async function capNhatTrangThaiDonHang(req, res) {
     transactionStarted = true;
     const currentResult = await new sql.Request(transaction)
       .input("maDon", sql.Int, maDon)
-      .query("SELECT TrangThai FROM dbo.DonHang WITH (UPDLOCK, HOLDLOCK) WHERE MaDon = @maDon");
+      .query("SELECT TrangThai, MaNhanVienXuLy FROM dbo.DonHang WITH (UPDLOCK, HOLDLOCK) WHERE MaDon = @maDon");
     const current = currentResult.recordset[0];
     if (!current) {
       await transaction.rollback();
       transactionStarted = false;
       return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng." });
+    }
+    if (req.user.TenVaiTro === 'Nhân viên' && Number(current.MaNhanVienXuLy) !== req.user.MaNguoiDung) {
+      await transaction.rollback();transactionStarted=false;
+      return res.status(403).json({success:false,message:'Đơn hàng chưa được phân công cho bạn.'});
     }
     const viTriCu = TRANG_THAI_DON.indexOf(current.TrangThai);
     const viTriMoi = TRANG_THAI_DON.indexOf(trangThaiMoi);
@@ -407,32 +411,122 @@ async function capNhatTrangThaiDonHang(req, res) {
       transactionStarted = false;
       return res.status(409).json({ success: false, message: "Chỉ có thể chuyển đơn sang bước trạng thái kế tiếp." });
     }
-    if (trangThaiMoi === "Hoàn tất") {
-      const stockResult = await new sql.Request(transaction)
+    if (trangThaiMoi === "Đã xác nhận") {
+      // Kiểm tra lại tại thời điểm xác nhận, không tin kết quả kiểm tra trên giao diện.
+      const duHang = await new sql.Request(transaction)
         .input("maDon", sql.Int, maDon)
         .query(`
-          SELECT ct.MaBienThe, SUM(ct.SoLuong) AS SoLuong, t.SoLuongTon
+          SELECT ct.MaBienThe, SUM(ct.SoLuong) AS SoLuongDat,
+                 ISNULL(t.SoLuongTon, 0) AS SoLuongTon,
+                 ISNULL((SELECT SUM(ct2.SoLuong)
+                         FROM dbo.CTDonHang ct2
+                         INNER JOIN dbo.DonHang dh2 ON dh2.MaDon = ct2.MaDon
+                         WHERE ct2.MaBienThe = ct.MaBienThe AND dh2.MaDon <> @maDon
+                           AND dh2.TrangThai IN (N'Chờ xác nhận', N'Đã xác nhận', N'Đang chuẩn bị', N'Đang giao')), 0) AS DaGiuKhac
           FROM dbo.CTDonHang ct
           LEFT JOIN dbo.TonKho t WITH (UPDLOCK, HOLDLOCK) ON t.MaBienThe = ct.MaBienThe
           WHERE ct.MaDon = @maDon
           GROUP BY ct.MaBienThe, t.SoLuongTon
         `);
-      if (!stockResult.recordset.length || stockResult.recordset.some((item) =>
-        item.SoLuongTon === null || Number(item.SoLuongTon) < Number(item.SoLuong)
-      )) {
-        throw loi(409, "Tồn kho không đủ để hoàn tất đơn hàng này.");
+      if (!duHang.recordset.length || duHang.recordset.some(x =>
+        Number(x.SoLuongTon) - Number(x.DaGiuKhac) < Number(x.SoLuongDat))) {
+        throw loi(409, "Không đủ tồn kho để xác nhận đơn hàng. Vui lòng kiểm tra lại.");
       }
-      for (const item of stockResult.recordset) {
+    }
+    if (trangThaiMoi === "Hoàn tất") {
+      const delivery = await new sql.Request(transaction)
+        .input("maDon", sql.Int, maDon)
+        .query("SELECT TrangThaiGiao FROM dbo.GiaoHang WITH (UPDLOCK, HOLDLOCK) WHERE MaDon = @maDon");
+      if (!delivery.recordset.length || delivery.recordset[0].TrangThaiGiao !== "Đang giao") {
+        throw loi(409, "Chỉ hoàn tất đơn khi phiếu giao đang ở trạng thái Đang giao.");
+      }
+      // Đơn chỉ được hoàn tất từ "Đang giao" theo kiểm tra trạng thái phía trên.
+      // Khóa đơn trong transaction SERIALIZABLE để hai yêu cầu song song không thể xuất kho hai lần.
+      const chiTietResult = await new sql.Request(transaction)
+        .input("maDon", sql.Int, maDon)
+        .query(`
+          SELECT ct.MaCTDon, ct.MaBienThe, ct.SoLuong
+          FROM dbo.CTDonHang ct
+          WHERE ct.MaDon = @maDon
+          ORDER BY ct.MaCTDon
+        `);
+      const chiTiet = chiTietResult.recordset;
+      if (!chiTiet.length) throw loi(409, "Đơn hàng không có sản phẩm để xuất kho.");
+
+      // Phòng trường hợp dữ liệu đã từng được xuất kho bằng một luồng khác.
+      // Không tự ý trừ thêm khi đã có bút toán Xuất kho của đơn này.
+      const daXuatResult = await new sql.Request(transaction)
+        .input("maDon", sql.Int, maDon)
+        .query(`
+          SELECT TOP (1) g.MaGiaoDich
+          FROM dbo.GiaoDichKho g WITH (UPDLOCK, HOLDLOCK)
+          INNER JOIN dbo.CTDonHang ct ON ct.MaCTDon = g.MaCTDon
+          WHERE ct.MaDon = @maDon AND g.LoaiGiaoDich = N'Xuất kho'
+        `);
+      if (daXuatResult.recordset.length) {
+        throw loi(409, "Đơn hàng đã có giao dịch xuất kho. Vui lòng kiểm tra lịch sử kho trước khi xử lý tiếp.");
+      }
+
+      // Gộp theo biến thể để một SKU xuất đúng tổng số lượng của các dòng đơn.
+      const theoBienThe = new Map();
+      for (const dong of chiTiet) {
+        const soLuong = Number(dong.SoLuong);
+        if (!Number.isSafeInteger(soLuong) || soLuong <= 0) {
+          throw loi(409, "Số lượng sản phẩm trong đơn không hợp lệ.");
+        }
+        theoBienThe.set(dong.MaBienThe, (theoBienThe.get(dong.MaBienThe) || 0) + soLuong);
+      }
+      for (const [maBienThe, soLuong] of theoBienThe) {
+        // UPDATE điều kiện thực hiện kiểm tra tồn và trừ tồn một cách nguyên tử.
         const updateStock = await new sql.Request(transaction)
-          .input("maBienThe", sql.VarChar(80), item.MaBienThe)
-          .input("soLuong", sql.Int, Number(item.SoLuong))
+          .input("maBienThe", sql.VarChar(80), maBienThe)
+          .input("soLuong", sql.Int, soLuong)
           .query(`
-            UPDATE dbo.TonKho
+            UPDATE dbo.TonKho WITH (UPDLOCK, HOLDLOCK)
             SET SoLuongTon = SoLuongTon - @soLuong
             WHERE MaBienThe = @maBienThe AND SoLuongTon >= @soLuong
           `);
-        if (!updateStock.rowsAffected[0]) throw loi(409, "Tồn kho vừa thay đổi. Vui lòng tải lại đơn hàng.");
+        if (updateStock.rowsAffected[0] !== 1) {
+          throw loi(409, "Tồn kho không đủ để hoàn tất đơn hàng. Vui lòng kiểm tra lại số lượng SKU.");
+        }
       }
+
+      // Bút toán xuất và tồn kho luôn commit/rollback cùng với trạng thái đơn.
+      // Lịch sử kho của nhân viên lấy dữ liệu từ GiaoDichKho.
+      for (const dong of chiTiet) {
+        await new sql.Request(transaction)
+          .input("maNguoiDung", sql.Int, req.user.MaNguoiDung)
+          .input("maCTDon", sql.Int, dong.MaCTDon)
+          .input("maBienThe", sql.VarChar(80), dong.MaBienThe)
+          .input("soLuong", sql.Int, -Number(dong.SoLuong))
+          .input("ghiChu", sql.NVarChar(500), `Xuất kho khi hoàn tất đơn #${maDon}`)
+          .query(`
+            INSERT INTO dbo.GiaoDichKho
+              (MaNguoiDung, MaCTDon, MaBienThe, LoaiGiaoDich, SoLuongThayDoi, GhiChu)
+            VALUES
+              (@maNguoiDung, @maCTDon, @maBienThe, N'Xuất kho', @soLuong, @ghiChu)
+          `);
+      }
+      // Đồng bộ thông tin vận chuyển với trạng thái hoàn tất của đơn.
+      await new sql.Request(transaction)
+        .input("maDon", sql.Int, maDon)
+        .query(`
+          UPDATE dbo.GiaoHang
+          SET TrangThaiGiao = N'Giao thành công',
+              NgayGiaoThucTe = COALESCE(NgayGiaoThucTe, SYSDATETIME()),
+              NgayCapNhat = SYSDATETIME()
+          WHERE MaDon = @maDon
+        `);
+    }
+    if (trangThaiMoi === "Đang giao") {
+      const shipment = await new sql.Request(transaction)
+        .input("maDon", sql.Int, maDon)
+        .query("SELECT TrangThaiGiao FROM dbo.GiaoHang WITH (UPDLOCK, HOLDLOCK) WHERE MaDon = @maDon");
+      if (!shipment.recordset.length || !["Chờ giao", "Giao không thành công"].includes(shipment.recordset[0].TrangThaiGiao)) {
+        throw loi(409, "Không thể bắt đầu giao từ trạng thái phiếu giao hiện tại.");
+      }
+      await new sql.Request(transaction).input("maDon", sql.Int, maDon)
+        .query("UPDATE dbo.GiaoHang SET TrangThaiGiao = N'Đang giao', NgayCapNhat = SYSDATETIME(), LyDoThatBai = NULL WHERE MaDon = @maDon");
     }
     await new sql.Request(transaction)
       .input("maDon", sql.Int, maDon)
@@ -458,4 +552,219 @@ async function capNhatTrangThaiDonHang(req, res) {
   }
 }
 
-module.exports = { taoDonHang, layLichSuDonHang, theoDoiDonHang, locDonHangTheoTrangThai, capNhatTrangThaiDonHang };
+
+// Chỉ dành cho nhân viên/quản lý: danh sách đầy đủ và chi tiết xử lý đơn hàng.
+const TRANG_THAI_BO_LOC = [...TRANG_THAI_DON, "Đã hủy"];
+
+async function danhSachDonNhanVien(req, res) {
+  const q = String(req.query.q || "").trim().slice(0, 150);
+  const trangThai = String(req.query.trangThai || "").trim();
+  const thanhToan = String(req.query.thanhToan || "").trim();
+  const gia = String(req.query.gia || "").trim();
+  const tuNgay = String(req.query.tuNgay || "").trim();
+  const denNgay = String(req.query.denNgay || "").trim();
+  const trang = Math.max(1, Math.min(100000, Number(req.query.trang) || 1));
+  const soDong = req.user.TenVaiTro === "Nhân viên" ? 6 : 10;
+  const active = req.query.active === "true";
+  const nhanVien = req.user.TenVaiTro === 'Nhân viên' ? 0 : Number(req.query.nhanVien || 0);
+  if (!Number.isSafeInteger(nhanVien) || nhanVien < -1) return res.status(400).json({success:false,message:'Bộ lọc nhân viên không hợp lệ.'});
+  if ((trangThai && !TRANG_THAI_BO_LOC.includes(trangThai)) ||
+      (thanhToan && !["Đã thanh toán", "Chờ thanh toán"].includes(thanhToan)) ||
+      (gia && !["duoi10", "10den30", "tren30"].includes(gia)) ||
+      (tuNgay && !/^\d{4}-\d{2}-\d{2}$/.test(tuNgay)) ||
+      (denNgay && !/^\d{4}-\d{2}-\d{2}$/.test(denNgay))) {
+    return res.status(400).json({ success: false, message: "Bộ lọc không hợp lệ." });
+  }
+  try {
+    const pool = await getPool();
+    const result = await pool.request()
+      .input("q", sql.NVarChar(150), q)
+      .input("trangThai", sql.NVarChar(40), trangThai)
+      .input("thanhToan", sql.NVarChar(40), thanhToan)
+      .input("gia", sql.VarChar(20), gia)
+      .input("tuNgay", sql.VarChar(10), tuNgay)
+      .input("denNgay", sql.VarChar(10), denNgay)
+      .input("offset", sql.Int, (trang - 1) * soDong)
+      .input("soDong", sql.Int, soDong)
+      .input("nhanVien", sql.Int, nhanVien).input("active",sql.Bit,active).input("role", sql.NVarChar(30), req.user.TenVaiTro).input("viewer", sql.Int, req.user.MaNguoiDung)
+      .query(`
+        WITH ds AS (
+          SELECT dh.MaDon, dh.NgayDat, dh.TrangThai, dh.TenNguoiNhan, dh.SDTNhan,
+                 dh.TongThanhToan, dh.MaNhanVienXuLy, nvl.HoTen AS NhanVienXuLy, tt.PhuongThuc AS PhuongThucThanhToan,
+                 tt.TrangThai AS TrangThaiThanhToan
+          FROM dbo.DonHang dh
+          LEFT JOIN dbo.NguoiDung nvl ON nvl.MaNguoiDung = dh.MaNhanVienXuLy
+          OUTER APPLY (SELECT TOP (1) PhuongThuc, TrangThai FROM dbo.ThanhToan
+                       WHERE MaDon = dh.MaDon ORDER BY MaThanhToan DESC) tt
+          WHERE ( @nhanVien = 0 OR (@nhanVien = -1 AND dh.MaNhanVienXuLy IS NULL) OR dh.MaNhanVienXuLy = @nhanVien )
+            AND (@role <> N'Nhân viên' OR dh.MaNhanVienXuLy = @viewer)
+            AND (@active = 0 OR dh.TrangThai IN (N'Đã xác nhận',N'Đang chuẩn bị',N'Đang giao'))
+            AND (@trangThai = N'' OR dh.TrangThai = @trangThai)
+            AND (@thanhToan = N'' OR tt.TrangThai = @thanhToan)
+            AND (@gia = '' OR (@gia = 'duoi10' AND dh.TongThanhToan < 10000000)
+                 OR (@gia = '10den30' AND dh.TongThanhToan BETWEEN 10000000 AND 30000000)
+                 OR (@gia = 'tren30' AND dh.TongThanhToan > 30000000))
+            AND (@tuNgay = '' OR dh.NgayDat >= TRY_CONVERT(date, @tuNgay, 23))
+            AND (@denNgay = '' OR dh.NgayDat < DATEADD(day, 1, TRY_CONVERT(date, @denNgay, 23)))
+            AND (@q = N'' OR dh.TenNguoiNhan LIKE N'%' + @q + N'%'
+                 OR dh.SDTNhan LIKE '%' + @q + '%'
+                 OR CAST(dh.MaDon AS varchar(20)) = @q
+                 OR CONCAT('MA-', CONVERT(char(8), dh.NgayDat, 112), '-', RIGHT('000' + CAST(dh.MaDon AS varchar(20)), 3)) LIKE N'%' + @q + N'%')
+        )
+        SELECT MaDon, CONVERT(varchar(19), NgayDat, 126) AS NgayDat, TrangThai,
+               TenNguoiNhan, SDTNhan, TongThanhToan, MaNhanVienXuLy, NhanVienXuLy, PhuongThucThanhToan, TrangThaiThanhToan,
+               COUNT(*) OVER() AS TongSo
+        FROM ds
+        ORDER BY NgayDat DESC, MaDon DESC
+        OFFSET @offset ROWS FETCH NEXT @soDong ROWS ONLY
+      `);
+    const data = result.recordset.map(row => ({
+      ...row, MaDonHienThi: taoMaDonHienThi(row.MaDon, row.NgayDat), TongSo: undefined
+    }));
+    // Trường hợp đang ở trang vượt tổng số, vẫn cần thống kê tổng.
+    let tong = Number(result.recordset[0]?.TongSo || 0);
+    if (!data.length) {
+      const count = await pool.request()
+        .input("q", sql.NVarChar(150), q).input("trangThai", sql.NVarChar(40), trangThai)
+        .input("thanhToan", sql.NVarChar(40), thanhToan).input("gia", sql.VarChar(20), gia)
+        .input("tuNgay", sql.VarChar(10), tuNgay).input("denNgay", sql.VarChar(10), denNgay)
+        .input("nhanVien", sql.Int, nhanVien).input("active",sql.Bit,active).input("role", sql.NVarChar(30), req.user.TenVaiTro).input("viewer", sql.Int, req.user.MaNguoiDung)
+        .query(`SELECT COUNT(*) AS Tong FROM dbo.DonHang dh
+          OUTER APPLY (SELECT TOP (1) TrangThai FROM dbo.ThanhToan WHERE MaDon = dh.MaDon ORDER BY MaThanhToan DESC) tt
+          WHERE ( @nhanVien = 0 OR (@nhanVien = -1 AND dh.MaNhanVienXuLy IS NULL) OR dh.MaNhanVienXuLy = @nhanVien )
+          AND (@role <> N'Nhân viên' OR dh.MaNhanVienXuLy = @viewer)
+            AND (@active = 0 OR dh.TrangThai IN (N'Đã xác nhận',N'Đang chuẩn bị',N'Đang giao'))
+          AND (@trangThai = N'' OR dh.TrangThai = @trangThai)
+          AND (@thanhToan = N'' OR tt.TrangThai = @thanhToan)
+          AND (@gia = '' OR (@gia = 'duoi10' AND dh.TongThanhToan < 10000000) OR (@gia = '10den30' AND dh.TongThanhToan BETWEEN 10000000 AND 30000000) OR (@gia = 'tren30' AND dh.TongThanhToan > 30000000))
+          AND (@tuNgay = '' OR dh.NgayDat >= TRY_CONVERT(date, @tuNgay, 23))
+          AND (@denNgay = '' OR dh.NgayDat < DATEADD(day, 1, TRY_CONVERT(date, @denNgay, 23)))
+          AND (@q = N'' OR dh.TenNguoiNhan LIKE N'%' + @q + N'%' OR dh.SDTNhan LIKE '%' + @q + '%' OR CAST(dh.MaDon AS varchar(20)) = @q OR CONCAT('MA-', CONVERT(char(8), dh.NgayDat, 112), '-', RIGHT('000' + CAST(dh.MaDon AS varchar(20)), 3)) LIKE N'%' + @q + N'%')`);
+      tong = count.recordset[0].Tong;
+    }
+    return res.json({ success: true, data: { danhSach: data, tong, trang, soDong } });
+  } catch (error) {
+    console.error("Lỗi danh sách đơn nhân viên:", error.message);
+    return res.status(500).json({ success: false, message: "Không thể tải danh sách đơn hàng." });
+  }
+}
+
+async function chiTietDonNhanVien(req, res) {
+  const maDon = Number(req.params.id);
+  if (!Number.isSafeInteger(maDon) || maDon <= 0) return res.status(400).json({success:false, message:"Mã đơn không hợp lệ."});
+  try {
+    const pool = await getPool();
+    const result = await pool.request().input("maDon", sql.Int, maDon).query(`
+      SELECT dh.MaDon, CONVERT(varchar(19), dh.NgayDat, 126) AS NgayDat,
+             dh.TrangThai, dh.MaNhanVienXuLy, nvl.HoTen AS NhanVienXuLy, dh.TenNguoiNhan, dh.SDTNhan, dh.DiaChiGiao,
+             nd.Email, dh.TienHang, dh.PhiGiao, dh.GiamGia, dh.TongThanhToan,
+             tt.PhuongThuc AS PhuongThucThanhToan, tt.TrangThai AS TrangThaiThanhToan
+      FROM dbo.DonHang dh
+      LEFT JOIN dbo.NguoiDung nd ON nd.MaNguoiDung = dh.MaNguoiDung
+      LEFT JOIN dbo.NguoiDung nvl ON nvl.MaNguoiDung = dh.MaNhanVienXuLy
+      OUTER APPLY (SELECT TOP (1) PhuongThuc, TrangThai FROM dbo.ThanhToan
+                   WHERE MaDon = dh.MaDon ORDER BY MaThanhToan DESC) tt
+      WHERE dh.MaDon = @maDon`);
+    const don = result.recordset[0];
+    if (!don) return res.status(404).json({success:false, message:"Không tìm thấy đơn hàng."});
+    if (req.user.TenVaiTro === "Nhân viên" && Number(don.MaNhanVienXuLy) !== req.user.MaNguoiDung) return res.status(403).json({success:false,message:"Đơn hàng chưa được phân công cho bạn."});
+    const [ct, ls] = await Promise.all([
+      pool.request().input("maDon", sql.Int, maDon).query(`
+        SELECT ct.MaBienThe, ct.TenSanPhamSnapshot AS TenSanPham,
+               ct.CauHinhSnapshot AS CauHinh, ct.SKUSnapshot AS SKU,
+               ct.GiaBanSnapshot AS GiaBan, ct.SoLuong, ct.ThanhTien,
+               (SELECT TOP (1) a.DuongDan FROM dbo.AnhSanPham a
+                INNER JOIN dbo.BienTheSanPham b ON a.MaSanPham = b.MaSanPham
+                WHERE b.MaBienThe = ct.MaBienThe
+                ORDER BY a.LaAnhDaiDien DESC, a.MaAnh) AS DuongDanAnh
+        FROM dbo.CTDonHang ct WHERE ct.MaDon = @maDon ORDER BY ct.MaCTDon`),
+      pool.request().input("maDon", sql.Int, maDon).query(`
+        SELECT ls.TrangThaiCu, ls.TrangThaiMoi,
+               CONVERT(varchar(19), ls.ThoiDiem, 126) AS ThoiDiem,
+               COALESCE(nd.HoTen, N'Hệ thống') AS NguoiThucHien
+        FROM dbo.LichSuTrangThaiDon ls
+        LEFT JOIN dbo.NguoiDung nd ON nd.MaNguoiDung = ls.MaNguoiDung
+        WHERE ls.MaDon = @maDon ORDER BY ls.ThoiDiem, ls.MaLichSu`)
+    ]);
+    return res.json({success:true, data:{...don, MaDonHienThi:taoMaDonHienThi(don.MaDon, don.NgayDat), items:ct.recordset, lichSu:ls.recordset}});
+  } catch(error) {
+    console.error("Lỗi chi tiết đơn nhân viên:", error.message);
+    return res.status(500).json({success:false, message:"Không thể tải chi tiết đơn hàng."});
+  }
+}
+
+async function kiemTraTonDonNhanVien(req, res) {
+  const maDon = Number(req.params.id);
+  if (!Number.isSafeInteger(maDon) || maDon <= 0) return res.status(400).json({success:false, message:"Mã đơn không hợp lệ."});
+  try {
+    const pool = await getPool();
+    if (req.user.TenVaiTro === 'Nhân viên') {
+      const scope = await pool.request().input('maDon',sql.Int,maDon).input('viewer',sql.Int,req.user.MaNguoiDung)
+        .query('SELECT 1 AS CoQuyen FROM dbo.DonHang WHERE MaDon=@maDon AND MaNhanVienXuLy=@viewer');
+      if (!scope.recordset.length) return res.status(403).json({success:false,message:'Đơn hàng chưa được phân công cho bạn.'});
+    }
+    const result = await pool.request().input("maDon", sql.Int, maDon).query(`
+      SELECT ct.MaBienThe, ct.TenSanPhamSnapshot AS TenSanPham, ct.SKUSnapshot AS SKU,
+             SUM(ct.SoLuong) AS SoLuongDat, ISNULL(t.SoLuongTon, 0) AS SoLuongTon,
+             ISNULL((SELECT SUM(ct2.SoLuong) FROM dbo.CTDonHang ct2
+                     INNER JOIN dbo.DonHang dh2 ON dh2.MaDon = ct2.MaDon
+                     WHERE ct2.MaBienThe = ct.MaBienThe AND dh2.MaDon <> @maDon
+                       AND dh2.TrangThai IN (N'Chờ xác nhận', N'Đã xác nhận', N'Đang chuẩn bị', N'Đang giao')), 0) AS DaGiuKhac
+      FROM dbo.CTDonHang ct LEFT JOIN dbo.TonKho t ON t.MaBienThe = ct.MaBienThe
+      WHERE ct.MaDon = @maDon
+      GROUP BY ct.MaBienThe, ct.TenSanPhamSnapshot, ct.SKUSnapshot, t.SoLuongTon`);
+    if (!result.recordset.length) return res.status(404).json({success:false, message:"Không tìm thấy chi tiết đơn hàng."});
+    const items = result.recordset.map(row => ({
+      ...row, KhaDung:Math.max(0,Number(row.SoLuongTon) - Number(row.DaGiuKhac)),
+      DuHang:Number(row.SoLuongTon) - Number(row.DaGiuKhac) >= Number(row.SoLuongDat)
+    }));
+    return res.json({success:true, data:{items, duHang:items.every(x => x.DuHang)}});
+  } catch(error) {
+    console.error("Lỗi kiểm tra tồn đơn hàng:", error.message);
+    return res.status(500).json({success:false, message:"Không thể kiểm tra tồn kho."});
+  }
+}
+
+// Chỉ Quản lý/Admin được quản lý phân công. Chặn ghi đè khi đơn đã khóa.
+async function danhSachNhanVienXuLy(req,res) {
+  try {
+    const pool=await getPool();const r=await pool.request().query(`
+      SELECT nd.MaNguoiDung,nd.HoTen FROM dbo.NguoiDung nd
+      INNER JOIN dbo.VaiTro vt ON vt.MaVaiTro=nd.MaVaiTro
+      WHERE vt.TenVaiTro=N'Nhân viên' AND nd.TrangThai=N'Hoạt động'
+      ORDER BY nd.HoTen,nd.MaNguoiDung`);
+    res.json({success:true,data:r.recordset});
+  } catch(e){console.error('DS nhân viên phân công',e.message);res.status(500).json({success:false,message:'Không lấy được nhân viên.'});}
+}
+async function thongKeDonQuanLy(req,res) {
+  try {
+    const pool=await getPool();const r=await pool.request().query(`
+      SELECT TrangThai,COUNT(*) AS SoLuong FROM dbo.DonHang GROUP BY TrangThai`);
+    const data=Object.fromEntries(r.recordset.map(x=>[x.TrangThai,x.SoLuong]));
+    res.json({success:true,data});
+  }catch(e){console.error('Thống kê đơn quản lý',e.message);res.status(500).json({success:false,message:'Không lấy được thống kê.'});}
+}
+async function phanCongDon(req,res) {
+  const maDon=Number(req.params.id), maNhanVien=Number(req.body?.maNhanVien);
+  if(!Number.isSafeInteger(maDon)||maDon<=0||!Number.isSafeInteger(maNhanVien)||maNhanVien<=0)
+    return res.status(400).json({success:false,message:'Mã đơn hoặc nhân viên không hợp lệ.'});
+  let tx,started=false;
+  try {
+    const pool=await getPool();tx=new sql.Transaction(pool);await tx.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);started=true;
+    const employee=await new sql.Request(tx).input('id',sql.Int,maNhanVien).query(`
+      SELECT nd.HoTen FROM dbo.NguoiDung nd JOIN dbo.VaiTro vt ON nd.MaVaiTro=vt.MaVaiTro
+      WHERE nd.MaNguoiDung=@id AND nd.TrangThai=N'Hoạt động' AND vt.TenVaiTro=N'Nhân viên'`);
+    if(!employee.recordset.length){await tx.rollback();started=false;return res.status(400).json({success:false,message:'Nhân viên không hợp lệ hoặc đã ngưng hoạt động.'});}
+    const order=await new sql.Request(tx).input('id',sql.Int,maDon).query(`
+      SELECT TrangThai,MaNhanVienXuLy FROM dbo.DonHang WITH (UPDLOCK,HOLDLOCK) WHERE MaDon=@id`);
+    if(!order.recordset.length){await tx.rollback();started=false;return res.status(404).json({success:false,message:'Không tìm thấy đơn.'});}
+    if(['Hoàn tất','Đã hủy'].includes(order.recordset[0].TrangThai)){
+      await tx.rollback();started=false;return res.status(409).json({success:false,message:'Đơn đã đóng không thể phân công lại.'});
+    }
+    await new sql.Request(tx).input('id',sql.Int,maDon).input('employee',sql.Int,maNhanVien)
+      .query('UPDATE dbo.DonHang SET MaNhanVienXuLy=@employee WHERE MaDon=@id');
+    await tx.commit();started=false;
+    return res.json({success:true,data:{MaDon:maDon,MaNhanVienXuLy:maNhanVien,NhanVienXuLy:employee.recordset[0].HoTen}});
+  } catch(e){if(started)await tx.rollback().catch(()=>{});console.error('Phân công đơn',e.message);return res.status(500).json({success:false,message:'Không thể phân công đơn hàng.'});}
+}
+module.exports = { danhSachNhanVienXuLy, thongKeDonQuanLy, phanCongDon, danhSachDonNhanVien, chiTietDonNhanVien, kiemTraTonDonNhanVien, taoDonHang, layLichSuDonHang, theoDoiDonHang, locDonHangTheoTrangThai, capNhatTrangThaiDonHang };

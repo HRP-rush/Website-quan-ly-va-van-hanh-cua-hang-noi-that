@@ -18,8 +18,8 @@ const icons = {
 
 const staffNav = [
   { title: "Tổng quan", icon: "overview", path: "" },
-  { title: "Đơn hàng", icon: "orders", path: "" },
-  { title: "Giao hàng", icon: "delivery" },
+  { title: "Đơn hàng", icon: "orders", path: "/don-hang" },
+  { title: "Giao hàng", icon: "delivery", path: "/giao-hang" },
   { title: "Tồn kho", icon: "inventory", path: "/ton-kho" },
   { title: "Nhập kho", icon: "receipts", path: "/nhap-kho" },
   { title: "Lịch sử kho", icon: "history", path: "/lich-su-kho" }
@@ -37,8 +37,8 @@ const managementNav = [
     { title: "Nhà cung cấp", icon: "suppliers", path: "/nha-cung-cap" }
   ] },
   { group: "BÁN HÀNG", items: [
-    { title: "Đơn hàng", icon: "orders" },
-    { title: "Giao hàng", icon: "delivery" }
+    { title: "Đơn hàng", icon: "orders", path: "/don-hang" },
+    { title: "Giao hàng", icon: "delivery", path: "/giao-hang" }
   ] },
   { group: "CON NGƯỜI", items: [
     { title: "Khách hàng", icon: "customers", path: "/khach-hang" },
@@ -46,7 +46,7 @@ const managementNav = [
     { title: "Phản hồi", icon: "reviews", path: "/phan-hoi" }
   ] },
   { group: "QUẢN TRỊ", items: [
-    { title: "Thống kê & báo cáo", icon: "reports" }
+    { title: "Thống kê & báo cáo", icon: "reports", path: "/thong-ke-bao-cao" },
   ] }
 ];
 
