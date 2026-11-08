@@ -1,83 +1,48 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
-import { useEffect, useState } from "react";
+// Import toàn bộ các trang chức năng trong dự án
+import Checkout from './pages/customer/Checkout';
+import PaymentReturn from './pages/customer/PaymentReturn';
+import Invoice from './pages/customer/Invoice';
+import ProductReview from './pages/customer/ProductReview';
+import ManageReviews from './pages/customer/ManageReviews';
+import SalesReport from './pages/customer/SalesReport';
+import WarehouseReport from './pages/customer/WarehouseReport';
 
-function App() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    async function fetchProducts() {
-      try {
-        const apiUrl = import.meta.env.VITE_API_URL;
-
-        console.log("Địa chỉ Backend:", apiUrl);
-
-        const response = await fetch(
-          `${apiUrl}/api/san-pham`
-        );
-
-        if (!response.ok) {
-          throw new Error(`Lỗi HTTP ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        console.log("Dữ liệu nhận được:", result);
-
-        setProducts(result.data);
-      } catch (err) {
-        console.error("Lỗi kết nối API:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchProducts();
-  }, []);
-
+export default function App() {
   return (
-    <div style={{
-      maxWidth: "1000px",
-      margin: "40px auto",
-      padding: "24px",
-      fontFamily: "Arial"
-    }}>
-      <h1>QUẢN LÝ CỬA HÀNG NỘI THẤT</h1>
-      <h2>Danh sách sản phẩm</h2>
+    <Router>
+      <div style={{ minHeight: '100vh', background: '#f4f6f8', paddingBottom: '40px', fontFamily: 'Arial, sans-serif' }}>
+        {/* Thanh điều hướng (Navbar) tổng hợp toàn bộ các module */}
+        <nav style={{ background: '#343a40', color: '#fff', padding: '15px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+          <h2 style={{ margin: 0, fontSize: '20px' }}>Mộc An Interior</h2>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            <Link to="/" style={{ color: '#fff', textDecoration: 'none' }}>Thanh Toán</Link>
+            <Link to="/invoice" style={{ color: '#fff', textDecoration: 'none' }}>Hóa Đơn</Link>
+            <Link to="/danh-gia" style={{ color: '#fff', textDecoration: 'none' }}>Đánh Giá</Link>
+            <Link to="/quan-ly-phan-hoi" style={{ color: '#fff', textDecoration: 'none' }}>Quản Lý Phản Hồi</Link>
+            <Link to="/bao-cao" style={{ color: '#fff', textDecoration: 'none' }}>Báo Cáo Doanh Thu</Link>
+            <Link to="/kho-hang" style={{ color: '#fff', textDecoration: 'none' }}>Kho Hàng & Giao Hàng</Link>
+          </div>
+        </nav>
 
-      {loading && <p>Đang tải dữ liệu...</p>}
+        {/* Khung định tuyến chứa các Route */}
+        <div style={{ padding: '20px' }}>
+          <Routes>
+            {/* Nhóm 9: Đơn hàng, giao hàng và thanh toán */}
+            <Route path="/" element={<Checkout />} />
+            <Route path="/payment-return" element={<PaymentReturn />} />
+            <Route path="/invoice" element={<Invoice />} />
 
-      {error && (
-        <p style={{ color: "red" }}>
-          Lỗi: {error}
-        </p>
-      )}
-
-      {!loading && !error && products.map((sp) => (
-        <div
-          key={sp.MaSanPham}
-          style={{
-            padding: "20px",
-            marginBottom: "16px",
-            border: "1px solid #ddd",
-            borderRadius: "8px"
-          }}
-        >
-          <h3>{sp.TenSanPham}</h3>
-          <p>Danh mục: {sp.TenDanhMuc}</p>
-          <p>Phong cách: {sp.PhongCach}</p>
-          <p>Mô tả: {sp.MoTa}</p>
-          <p>Trạng thái: {sp.TrangThai}</p>
+            {/* Nhóm 10: Phản hồi, báo cáo, đánh giá và quản lý kho */}
+            <Route path="/danh-gia" element={<ProductReview />} />
+            <Route path="/quan-ly-phan-hoi" element={<ManageReviews />} />
+            <Route path="/bao-cao" element={<SalesReport />} />
+            <Route path="/kho-hang" element={<WarehouseReport />} />
+          </Routes>
         </div>
-      ))}
-
-      {!loading && !error && products.length === 0 && (
-        <p>Chưa có sản phẩm nào.</p>
-      )}
-    </div>
+      </div>
+    </Router>
   );
 }
-
-export default App;

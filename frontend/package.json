@@ -10,6 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+<<<<<<< Updated upstream
+=======
+    "axios": "^1.21.0",
+    "lucide-react": "^1.70.0",
+>>>>>>> Stashed changes
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

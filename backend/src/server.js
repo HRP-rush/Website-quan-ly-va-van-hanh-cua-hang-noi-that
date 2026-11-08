@@ -1,54 +1,28 @@
+const express = require('express');
+const cors = require('cors');
+require('dotenv').config();
 
-require("dotenv").config();
-
-const express = require("express");
-const cors = require("cors");
-const { getPool } = require("./config/db");
-
-const sanPhamRoutes = require("./routes/sanPhamRoutes");
-
+// Khởi tạo ứng dụng Express
 const app = express();
-const PORT = Number(process.env.PORT || 5000);
 
-app.use(cors({
-  origin: "http://localhost:5173"
-}));
-
+// Cấu hình Middleware
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// Khai báo các Routes của hệ thống
+const donHangRoutes = require("./routes/donHangRoutes");
+
+// Gắn prefix cho route đơn hàng
+app.use("/api/don-hang", donHangRoutes);
+
+// Route kiểm tra server hoạt động
 app.get("/", (req, res) => {
-  res.json({
-    message: "API quản lý cửa hàng nội thất"
-  });
+  res.json({ message: "API Mộc An Interior đang hoạt động ổn định!" });
 });
 
-// API kiểm tra kết nối SQL Server
-app.get("/api/health/db", async (req, res) => {
-  try {
-    const pool = await getPool();
-
-    const result = await pool.request().query(
-      "SELECT DB_NAME() AS databaseName"
-    );
-
-    res.json({
-      status: "connected",
-      database: result.recordset[0].databaseName
-    });
-  } catch (error) {
-    console.error("Lỗi SQL Server:", error.message);
-
-    res.status(503).json({
-      status: "error",
-      message: "Không thể kết nối cơ sở dữ liệu"
-    });
-  }
-});
-
-app.use("/api/san-pham", sanPhamRoutes);
-
+// Cấu hình cổng chạy Server
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(
-    `Backend đang chạy tại http://localhost:${PORT}`
-  );
+  console.log(`Server đang chạy trên cổng ${PORT}`);
 });
