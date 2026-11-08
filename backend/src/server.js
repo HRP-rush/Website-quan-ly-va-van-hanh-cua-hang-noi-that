@@ -1,6 +1,7 @@
 
 require("dotenv").config();
 
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const { getPool } = require("./config/db");
@@ -10,11 +11,20 @@ const sanPhamRoutes = require("./routes/sanPhamRoutes");
 const app = express();
 const PORT = Number(process.env.PORT || 5000);
 
+const cookieParser = require("cookie-parser");
+const { rateLimit } = require("express-rate-limit");
+const taiKhoanRoutes = require("./routes/taiKhoanRoutes");
+
+const khoRoutes = require("./routes/khoRoutes");
+
 app.use(cors({
-  origin: "http://localhost:5173"
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true
 }));
 
 app.use(express.json());
+app.use(cookieParser());
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.get("/", (req, res) => {
   res.json({
@@ -52,3 +62,46 @@ app.listen(PORT, () => {
     `Backend đang chạy tại http://localhost:${PORT}`
   );
 });
+
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau."
+  }
+});
+
+app.use(
+  "/api/v1/tai-khoan/dang-nhap",
+  loginLimiter
+);
+
+
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message:
+      "Bạn đã gửi quá nhiều yêu cầu đăng ký. Vui lòng thử lại sau."
+  }
+});
+
+app.use(
+  "/api/v1/tai-khoan/dang-ky",
+  registerLimiter
+);
+
+
+app.use(
+  "/api/v1/tai-khoan",
+  taiKhoanRoutes
+);
+
+app.use("/api/kho", khoRoutes);

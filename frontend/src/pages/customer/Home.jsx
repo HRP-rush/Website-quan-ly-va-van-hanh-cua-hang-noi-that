@@ -3,6 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Leaf, Armchair, HandHeart, ArrowUpRight } from "lucide-react";
 
 import Header from "../../components/Header";
+import { useLocation, useNavigate, Link } from "react-router-dom";
+import { getCurrentUser } from "../../services/authService";
+import "../../styles/catalog.css";
 import HeroBanner from "../../components/HeroBanner";
 import ProductCard from "../../components/ProductCard";
 import Footer from "../../components/Footer";
@@ -54,6 +57,7 @@ const benefits = [
 ];
 
 export default function Home() {
+  const navigate=useNavigate(),location=useLocation();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -104,6 +108,12 @@ export default function Home() {
     });
   };
 
+  async function handleAdd(product){
+    try{const user=await getCurrentUser();
+      if(!user){navigate('/dang-nhap',{state:{from:location.pathname+location.search,message:'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.'}});return;}
+      navigate(`/san-pham/${encodeURIComponent(product.id)}`);
+    }catch(err){setError(err.message)}
+  }
   const resetFilters = () => {
     setSearch("");
     setCategory("");
@@ -120,6 +130,7 @@ export default function Home() {
       />
 
       <main>
+        <div className="moc-visitor-hint container">Xem sản phẩm tự do · Đăng nhập khi muốn sử dụng giỏ hàng</div>
         <HeroBanner />
 
         {/* DANH MỤC THEO KHÔNG GIAN */}
@@ -211,15 +222,16 @@ export default function Home() {
                   <ProductCard
                     key={product.id}
                     product={product}
+                    onAdd={handleAdd}
                   />
                 ))}
               </div>
             )}
 
             <div className="products-bottom">
-              <a href="#products" className="btn btn-outline">
+              <Link to="/san-pham" className="btn btn-outline">
                 Khám phá tất cả sản phẩm
-              </a>
+              </Link>
             </div>
           </div>
         </section>

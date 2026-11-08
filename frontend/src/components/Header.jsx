@@ -1,21 +1,34 @@
 
 import { useState } from "react";
-import { Search, UserRound, ShoppingBag, Menu, X } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { getCurrentUser } from "../services/authService";
+import { Search, ShoppingBag, Menu, X } from "lucide-react";
 import Navbar from "./Navbar";
+import AccountMenu from "./AccountMenu";
 
 export default function Header({ onSearch, onCategoryChange }) {
+  const navigate=useNavigate(),location=useLocation();
+  const [notice,setNotice]=useState("");
   const [keyword, setKeyword] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
 
   function handleSearch(e) {
     e.preventDefault();
-    onSearch(keyword.trim());
+    if(typeof onSearch==="function") onSearch(keyword.trim());
+    else navigate(`/san-pham?q=${encodeURIComponent(keyword.trim())}`);
 
     document.getElementById("products")?.scrollIntoView({
       behavior: "smooth"
     });
   }
 
+  async function handleCart(){
+    setNotice('');
+    try {const user=await getCurrentUser();
+      if(!user){navigate('/dang-nhap',{state:{from:location.pathname+location.search,message:'Vui lòng đăng nhập để sử dụng giỏ hàng.'}});return;}
+      setNotice(user.TenVaiTro==='Khách hàng'?'Giỏ hàng chưa triển khai trong giai đoạn này.':'Giỏ hàng chỉ dành cho tài khoản Khách hàng.');
+    }catch(e){setNotice(e.message)}
+  }
   return (
     <header className="site-header">
       <div className="announcement">
@@ -43,16 +56,14 @@ export default function Header({ onSearch, onCategoryChange }) {
         </form>
 
         <div className="header-actions">
-          <a href="/dang-nhap" className="header-action">
-            <UserRound size={19} strokeWidth={1.5} />
-            <span>Tài khoản</span>
-          </a>
-
-          <a href="/gio-hang" className="header-action">
+          <AccountMenu />
+          
+          <button type="button" onClick={handleCart} className="header-action moc-header-cart">
             <ShoppingBag size={19} strokeWidth={1.5} />
             <span>Giỏ hàng</span>
-          </a>
+          </button>
         </div>
+
 
         <button
           className="mobile-menu-toggle"
@@ -64,6 +75,7 @@ export default function Header({ onSearch, onCategoryChange }) {
         </button>
       </div>
 
+      {notice && <div className="moc-header-notice" role="status">{notice}</div>}
       <Navbar
         mobileOpen={mobileOpen}
         closeMobile={() => setMobileOpen(false)}
