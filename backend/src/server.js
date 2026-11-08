@@ -7,6 +7,8 @@ const cors = require("cors");
 const { getPool } = require("./config/db");
 
 const sanPhamRoutes = require("./routes/sanPhamRoutes");
+const gioHangRoutes = require("./routes/gioHangRoutes");
+const donHangRoutes = require("./routes/donHangRoutes");
 
 const app = express();
 const PORT = Number(process.env.PORT || 5000);
@@ -58,13 +60,6 @@ app.get("/api/health/db", async (req, res) => {
 
 app.use("/api/san-pham", sanPhamRoutes);
 
-app.listen(PORT, () => {
-  console.log(
-    `Backend đang chạy tại http://localhost:${PORT}`
-  );
-});
-
-
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -107,3 +102,17 @@ app.use(
 
 app.use("/api/kho", khoRoutes);
 app.use("/api/nhap-kho", nhapKhoRoutes);
+app.use("/api/v1/gio-hang", gioHangRoutes);
+app.use("/api/v1/don-hang", donHangRoutes);
+
+// Keep unknown API routes in JSON format so clients never try to parse an HTML 404 page.
+app.use("/api", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Không tìm thấy API ${req.method} ${req.originalUrl}.`
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Backend đang chạy tại http://localhost:${PORT}`);
+});
