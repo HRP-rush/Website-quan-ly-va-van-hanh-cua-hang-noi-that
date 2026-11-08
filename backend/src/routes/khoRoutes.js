@@ -1,5 +1,5 @@
 const express = require("express");
-const { layTonKho, layChiTietTonKho } = require("../controllers/khoController");
+const { layTonKho, layChiTietTonKho, traCuuTonKhoNhanVien, layDanhMucTraCuu } = require("../controllers/khoController");
 const {
   layDanhSachNhaCungCap,
   layChiTietNhaCungCap,
@@ -11,6 +11,10 @@ const { xacThuc, choPhepVaiTro } = require("../middleware/xacThuc");
 const router = express.Router();
 const quanTri = [xacThuc, choPhepVaiTro("Quản lý", "Admin")];
 
+// API tra cứu CHỈ ĐỌC cho nhân viên; không mở quyền quản trị kho.
+const nhanVien = [xacThuc, choPhepVaiTro("Nhân viên")];
+router.get("/tra-cuu-ton-kho", ...nhanVien, traCuuTonKhoNhanVien);
+router.get("/tra-cuu-danh-muc", ...nhanVien, layDanhMucTraCuu);
 router.get("/ton-kho", ...quanTri, layTonKho);
 router.get("/ton-kho/:maBienThe", ...quanTri, layChiTietTonKho);
 router.get("/nha-cung-cap", ...quanTri, layDanhSachNhaCungCap);

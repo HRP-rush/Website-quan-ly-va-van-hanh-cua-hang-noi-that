@@ -52,24 +52,31 @@ async function layTonKho(req, res) {
     if (maDanhMuc) { dk.push("sp.MaDanhMuc = @maDanhMuc"); locThamSo.push(["maDanhMuc", sql.VarChar(50), maDanhMuc]); }
     if (tinhTrang) { dk.push("s.TinhTrang = @tinhTrang"); locThamSo.push(["tinhTrang", sql.NVarChar(20), tinhTrang]); }
     const where = dk.join(" AND ");
+    // Thống kê của màn hình nhân viên áp dụng bộ lọc tìm kiếm/danh mục,
+    // nhưng không áp dụng trạng thái để luôn hiển thị đủ ba nhóm.
+    const whereKpi = dk.filter((d) => d !== "s.TinhTrang = @tinhTrang").join(" AND ");
     const taoLoc = () => { const r = taoCoBan(); locThamSo.forEach(([n, ty, v]) => r.input(n, ty, v)); return r; };
 
     const [ds, dem, kpi, cb] = await Promise.all([
       taoLoc().input("offset", sql.Int, (trang - 1) * soDong).input("soDong", sql.Int, soDong).query(`
         SELECT b.MaBienThe, b.SKU, b.ChatLieu, b.MauSac, b.KichThuoc, b.TrangThai,
                sp.MaSanPham, sp.TenSanPham, dm.TenDanhMuc,
+               (SELECT TOP (1) a.DuongDan FROM dbo.AnhSanPham a
+                WHERE a.MaSanPham = sp.MaSanPham
+                ORDER BY a.LaAnhDaiDien DESC, a.MaAnh ASC) AS DuongDanAnh,
                x.Ton AS SoLuongTon, x.Giu AS DaGiu, k.KhaDung, x.Muc AS MucCanhBao, s.TinhTrang
         ${nguon}
         WHERE ${where}
         ORDER BY sp.TenSanPham, b.SKU
         OFFSET @offset ROWS FETCH NEXT @soDong ROWS ONLY`),
       taoLoc().query(`SELECT COUNT(*) AS Tong ${nguon} WHERE ${where}`),
-      taoCoBan().query(`
+      (req.staffLookup ? taoLoc() : taoCoBan()).query(`
         SELECT COUNT(*) AS Tong,
                ISNULL(SUM(CASE WHEN s.TinhTrang = N'Còn hàng' THEN 1 ELSE 0 END), 0) AS ConHang,
                ISNULL(SUM(CASE WHEN s.TinhTrang = N'Sắp hết' THEN 1 ELSE 0 END), 0) AS SapHet,
                ISNULL(SUM(CASE WHEN s.TinhTrang = N'Hết hàng' THEN 1 ELSE 0 END), 0) AS HetHang
-        ${nguon}`),
+        ${nguon}
+        ${req.staffLookup ? `WHERE ${whereKpi}` : ""}`),
       // Cảnh báo chỉ tính SKU đang bán (SKU đã ngừng bán hết hàng không cần nhắc)
       taoCoBan().query(`
         SELECT TOP (5) b.SKU, k.KhaDung, x.Muc AS MucCanhBao, s.TinhTrang, COUNT(*) OVER() AS Tong
@@ -217,4 +224,26 @@ async function layChiTietTonKho(req, res) {
   }
 }
 
-module.exports = { layTonKho, layChiTietTonKho };
+async function traCuuTonKhoNhanVien(req, res) {
+  req.staffLookup = true;
+  return layTonKho(req, res);
+}
+
+async function layDanhMucTraCuu(req, res) {
+  try {
+    const pool = await getPool();
+    const result = await pool.request().query(`
+      SELECT dm.MaDanhMuc, dm.TenDanhMuc
+      FROM dbo.DanhMuc dm
+      WHERE EXISTS (SELECT 1 FROM dbo.SanPham sp
+                    WHERE sp.MaDanhMuc = dm.MaDanhMuc)
+      ORDER BY dm.TenDanhMuc, dm.MaDanhMuc
+    `);
+    return res.json({ success: true, data: result.recordset });
+  } catch (error) {
+    console.error("Lỗi lấy danh mục tra cứu tồn kho:", error.message);
+    return res.status(500).json({ success: false, message: "Không thể lấy danh mục." });
+  }
+}
+
+module.exports = { layTonKho, layChiTietTonKho, traCuuTonKhoNhanVien, layDanhMucTraCuu };

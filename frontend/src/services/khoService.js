@@ -57,3 +57,16 @@ export async function updateSupplierStatus(maNCC, trangThai) {
   });
   return parse(res);
 }
+
+// Chỉ nhân viên được gọi các endpoint tra cứu này.
+export async function listEmployeeStock(params = {}) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => { if (v !== "" && v != null) qs.set(k, v); });
+  const res = await fetch(`${API_URL}/api/kho/tra-cuu-ton-kho?${qs}`, { credentials: "include" });
+  return parse(res);
+}
+
+export async function listEmployeeStockCategories() {
+  const res = await fetch(`${API_URL}/api/kho/tra-cuu-danh-muc`, { credentials: "include" });
+  return (await parse(res)).data;
+}

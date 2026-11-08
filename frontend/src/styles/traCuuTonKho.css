@@ -1,0 +1,47 @@
+.nvtk { color:#282924; }
+.nvtk .workspace-breadcrumb {margin-bottom:27px}
+.nvtk-heading h1 {font:400 36px/1.25 "Playfair Display",Georgia,serif;margin:0 0 7px;letter-spacing:-.6px}
+.nvtk-heading p {margin:0;color:#8c8780;font-size:12px}
+.nvtk-filters {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin:29px 0 21px}
+.nvtk-filters label {display:flex;flex-direction:column;gap:10px;min-width:0;font-size:12px;color:#272923}
+.nvtk-filters label span {font-weight:500}
+.nvtk-filters input,.nvtk-filters select {height:46px;width:100%;min-width:0;border:1px solid #e5d9cb;border-radius:6px;background:#fff;padding:0 14px;color:#37352f;font-size:13px;outline-color:#b18d69}
+.nvtk-filters input::placeholder {color:#a49b92}
+.nvtk-kpis {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-bottom:22px}
+.nvtk-kpi {min-height:124px;border:1px solid #e6dacd;background:#fff;border-radius:7px;padding:23px 21px;display:flex;flex-direction:column;justify-content:space-between;gap:25px}
+.nvtk-kpi span {font-size:11px;color:#89847e}
+.nvtk-kpi strong {font:400 30px/1 "Playfair Display",Georgia,serif}
+.nvtk-info {background:#eaf1f5;border-radius:5px;min-height:49px;display:flex;align-items:center;gap:11px;color:#5889a9;font-size:11px;padding:13px 15px;margin-bottom:22px;line-height:1.55}
+.nvtk-info svg {flex-shrink:0}
+.nvtk-error {padding:14px 16px;margin-bottom:16px;background:#fceceb;color:#a23b34;border-radius:5px;font-size:12px}
+.nvtk-error button {border:0;background:transparent;color:inherit;text-decoration:underline}
+.nvtk-table-wrap {border:1px solid #e6dacd;border-radius:7px;overflow-x:auto;background:white}
+.nvtk-table {border-collapse:collapse;width:100%;min-width:975px;text-align:left;font-size:10.5px}
+.nvtk-table th {background:#f1ede8;color:#8b857c;font-weight:400;padding:17px 12px;white-space:normal;line-height:1.5}
+.nvtk-table td {border-top:1px solid #e9ded1;padding:13px 12px;white-space:nowrap;vertical-align:middle}
+.nvtk-table td:nth-child(2) {min-width:120px;white-space:normal}
+.nvtk-table th:first-child,.nvtk-table td:first-child {padding-left:14px}
+.nvtk-image,.nvtk-image img,.nvtk-placeholder {width:54px;height:62px;border-radius:5px}
+.nvtk-image {overflow:hidden;background:#f1ebe4}
+.nvtk-image img {object-fit:cover;display:block}
+.nvtk-placeholder {display:flex;align-items:center;justify-content:center;color:#9f8c76}
+.nvtk-sku {font-size:10px}
+.nvtk-quantity {font-size:17px;font-weight:600}
+.nvtk-quantity.available {color:#358564}.nvtk-quantity.low {color:#c58b22}.nvtk-quantity.empty {color:#d34848}
+.nvtk-status {font-size:10px;white-space:nowrap}
+.nvtk-table .nvtk-status.available {color:#32845e}.nvtk-table .nvtk-status.low {color:#c48b22}.nvtk-table .nvtk-status.empty {color:#d44b4b}
+.nvtk-no-data {text-align:center;padding:35px!important;color:#888}
+.nvtk-photo-note {margin:23px 0 24px;font-size:10px;color:#97918a;line-height:1.6}
+.nvtk-pager {display:flex;align-items:center;justify-content:space-between;gap:14px;color:#918b84;font-size:11px;margin-bottom:24px}
+.nvtk-pages {display:flex;gap:7px}
+.nvtk-pages button {width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:1px solid #e6dacd;border-radius:4px;background:#fff;color:#45433e;font-size:11px;cursor:pointer}
+.nvtk-pages button.selected {color:#fff;background:#31352f;border-color:#31352f}.nvtk-pages button:disabled {opacity:.5;cursor:not-allowed}
+.nvtk-cards {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:21px}
+.nvtk-card {padding:23px 21px;background:#fff;border:1px solid #e6dacd;border-radius:7px;min-height:161px}
+.nvtk-card h2 {font:400 24px/1.35 "Playfair Display",Georgia,serif;margin:0 0 17px;overflow-wrap:anywhere}
+.nvtk-card .nvtk-status {display:inline-block;padding:6px 9px;border-radius:4px}
+.nvtk-card .nvtk-status.available {color:#398663;background:#e9f3ed}.nvtk-card .nvtk-status.low {color:#b47f22;background:#fdf2e4}.nvtk-card .nvtk-status.empty {color:#c94d4d;background:#fbecec}
+.nvtk-card p {font-size:12px;margin:25px 0 0;line-height:1.6}
+@media(max-width:1100px){.nvtk-cards {gap:12px}.nvtk-card h2{font-size:20px}}
+@media(max-width:760px){.nvtk-filters{grid-template-columns:1fr 1fr}.nvtk-kpis{grid-template-columns:1fr 1fr}.nvtk-cards{grid-template-columns:1fr 1fr}}
+@media(max-width:500px){.nvtk-heading h1{font-size:30px}.nvtk-filters{grid-template-columns:1fr}.nvtk-cards{grid-template-columns:1fr}.nvtk-kpi{min-height:106px;padding:18px}.nvtk-pager{flex-wrap:wrap}.nvtk-card{min-height:unset}}
