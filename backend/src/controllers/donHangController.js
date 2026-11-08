@@ -408,31 +408,82 @@ async function capNhatTrangThaiDonHang(req, res) {
       return res.status(409).json({ success: false, message: "Chỉ có thể chuyển đơn sang bước trạng thái kế tiếp." });
     }
     if (trangThaiMoi === "Hoàn tất") {
-      const stockResult = await new sql.Request(transaction)
+      // Đơn chỉ được hoàn tất từ "Đang giao" theo kiểm tra trạng thái phía trên.
+      // Khóa đơn trong transaction SERIALIZABLE để hai yêu cầu song song không thể xuất kho hai lần.
+      const chiTietResult = await new sql.Request(transaction)
         .input("maDon", sql.Int, maDon)
         .query(`
-          SELECT ct.MaBienThe, SUM(ct.SoLuong) AS SoLuong, t.SoLuongTon
+          SELECT ct.MaCTDon, ct.MaBienThe, ct.SoLuong
           FROM dbo.CTDonHang ct
-          LEFT JOIN dbo.TonKho t WITH (UPDLOCK, HOLDLOCK) ON t.MaBienThe = ct.MaBienThe
           WHERE ct.MaDon = @maDon
-          GROUP BY ct.MaBienThe, t.SoLuongTon
+          ORDER BY ct.MaCTDon
         `);
-      if (!stockResult.recordset.length || stockResult.recordset.some((item) =>
-        item.SoLuongTon === null || Number(item.SoLuongTon) < Number(item.SoLuong)
-      )) {
-        throw loi(409, "Tồn kho không đủ để hoàn tất đơn hàng này.");
+      const chiTiet = chiTietResult.recordset;
+      if (!chiTiet.length) throw loi(409, "Đơn hàng không có sản phẩm để xuất kho.");
+
+      // Phòng trường hợp dữ liệu đã từng được xuất kho bằng một luồng khác.
+      // Không tự ý trừ thêm khi đã có bút toán Xuất kho của đơn này.
+      const daXuatResult = await new sql.Request(transaction)
+        .input("maDon", sql.Int, maDon)
+        .query(`
+          SELECT TOP (1) g.MaGiaoDich
+          FROM dbo.GiaoDichKho g WITH (UPDLOCK, HOLDLOCK)
+          INNER JOIN dbo.CTDonHang ct ON ct.MaCTDon = g.MaCTDon
+          WHERE ct.MaDon = @maDon AND g.LoaiGiaoDich = N'Xuất kho'
+        `);
+      if (daXuatResult.recordset.length) {
+        throw loi(409, "Đơn hàng đã có giao dịch xuất kho. Vui lòng kiểm tra lịch sử kho trước khi xử lý tiếp.");
       }
-      for (const item of stockResult.recordset) {
+
+      // Gộp theo biến thể để một SKU xuất đúng tổng số lượng của các dòng đơn.
+      const theoBienThe = new Map();
+      for (const dong of chiTiet) {
+        const soLuong = Number(dong.SoLuong);
+        if (!Number.isSafeInteger(soLuong) || soLuong <= 0) {
+          throw loi(409, "Số lượng sản phẩm trong đơn không hợp lệ.");
+        }
+        theoBienThe.set(dong.MaBienThe, (theoBienThe.get(dong.MaBienThe) || 0) + soLuong);
+      }
+      for (const [maBienThe, soLuong] of theoBienThe) {
+        // UPDATE điều kiện thực hiện kiểm tra tồn và trừ tồn một cách nguyên tử.
         const updateStock = await new sql.Request(transaction)
-          .input("maBienThe", sql.VarChar(80), item.MaBienThe)
-          .input("soLuong", sql.Int, Number(item.SoLuong))
+          .input("maBienThe", sql.VarChar(80), maBienThe)
+          .input("soLuong", sql.Int, soLuong)
           .query(`
-            UPDATE dbo.TonKho
+            UPDATE dbo.TonKho WITH (UPDLOCK, HOLDLOCK)
             SET SoLuongTon = SoLuongTon - @soLuong
             WHERE MaBienThe = @maBienThe AND SoLuongTon >= @soLuong
           `);
-        if (!updateStock.rowsAffected[0]) throw loi(409, "Tồn kho vừa thay đổi. Vui lòng tải lại đơn hàng.");
+        if (updateStock.rowsAffected[0] !== 1) {
+          throw loi(409, "Tồn kho không đủ để hoàn tất đơn hàng. Vui lòng kiểm tra lại số lượng SKU.");
+        }
       }
+
+      // Bút toán xuất và tồn kho luôn commit/rollback cùng với trạng thái đơn.
+      // Lịch sử kho của nhân viên lấy dữ liệu từ GiaoDichKho.
+      for (const dong of chiTiet) {
+        await new sql.Request(transaction)
+          .input("maNguoiDung", sql.Int, req.user.MaNguoiDung)
+          .input("maCTDon", sql.Int, dong.MaCTDon)
+          .input("maBienThe", sql.VarChar(80), dong.MaBienThe)
+          .input("soLuong", sql.Int, -Number(dong.SoLuong))
+          .input("ghiChu", sql.NVarChar(500), `Xuất kho khi hoàn tất đơn #${maDon}`)
+          .query(`
+            INSERT INTO dbo.GiaoDichKho
+              (MaNguoiDung, MaCTDon, MaBienThe, LoaiGiaoDich, SoLuongThayDoi, GhiChu)
+            VALUES
+              (@maNguoiDung, @maCTDon, @maBienThe, N'Xuất kho', @soLuong, @ghiChu)
+          `);
+      }
+      // Đồng bộ thông tin vận chuyển với trạng thái hoàn tất của đơn.
+      await new sql.Request(transaction)
+        .input("maDon", sql.Int, maDon)
+        .query(`
+          UPDATE dbo.GiaoHang
+          SET TrangThaiGiao = N'Đã giao',
+              NgayGiaoThucTe = COALESCE(NgayGiaoThucTe, SYSDATETIME())
+          WHERE MaDon = @maDon
+        `);
     }
     await new sql.Request(transaction)
       .input("maDon", sql.Int, maDon)
