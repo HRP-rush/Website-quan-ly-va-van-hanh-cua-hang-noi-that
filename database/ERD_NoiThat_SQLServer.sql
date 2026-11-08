@@ -24,6 +24,7 @@ GO
 CREATE TABLE dbo.NguoiDung (
     MaNguoiDung    INT IDENTITY(1,1) NOT NULL,
     MaVaiTro       INT NOT NULL,
+    HoTen          NVARCHAR(150) NULL,
     Email          VARCHAR(254) NOT NULL,
     MatKhauHash    VARCHAR(255) NOT NULL,
     SoDienThoai    VARCHAR(20) NULL,

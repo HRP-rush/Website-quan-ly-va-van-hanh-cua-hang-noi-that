@@ -1,0 +1,5 @@
+/* Dùng kèm themSanPham.css (đã có sẵn các lớp .sp-*) */
+.cs-banner {background:#edf1f4;color:#4e6a7c;font-size:12px;padding:16px 20px;border-radius:6px;margin-bottom:24px;display:flex;align-items:center;gap:10px}
+.cs-chip {display:inline-block;background:#e9f3ee;color:#3f7a5c;font-size:10px;padding:6px 10px;border-radius:4px;margin-top:16px}
+.cs-dirty {color:#b37d39}
+.sp-field input:disabled {background:#f6f3ee;color:#8e857c;cursor:not-allowed}

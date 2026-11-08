@@ -10,13 +10,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
     "axios": "^1.21.0",
     "lucide-react": "^1.70.0",
 >>>>>>> Stashed changes
+=======
+    "lucide-react": "^1.70.0",
+>>>>>>> 4ef9bddc18d348b4f669190ee2f1768a68ca3155
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
