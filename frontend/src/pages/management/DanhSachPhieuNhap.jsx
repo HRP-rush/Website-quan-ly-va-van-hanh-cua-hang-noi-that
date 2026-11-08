@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Plus, Info, AlertTriangle } from "lucide-react";
 import WorkspaceLayout from "../../components/WorkspaceLayout";
+import ChiTietPhieuNhapModal from "../../components/ChiTietPhieuNhapModal";
 import { listReceipts } from "../../services/nhapKhoService";
 import "../../styles/phieuNhap.css";
 
@@ -32,6 +33,7 @@ export default function DanhSachPhieuNhap({ user, mode }) {
   const { state } = useLocation();
   const base = mode === "admin" ? "/admin" : "/quan-ly";
   const [flash, setFlash] = useState(state?.flash || "");
+  const [xem, setXem] = useState(null);   // mã phiếu đang mở trong pop-up chi tiết
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [trangThai, setTrangThai] = useState("");
@@ -111,7 +113,7 @@ export default function DanhSachPhieuNhap({ user, mode }) {
             <td><span className={`pn-chip ${LOP[p.TrangThai] || "stopped"}`}>{NHAN[p.TrangThai] || p.TrangThai}</span></td>
             <td className="pn-actions">{p.TrangThai === NHAP
               ? <button type="button" onClick={() => navigate(`${base}/phieu-nhap/${p.MaPhieuNhap}/sua`)}>Tiếp tục lập</button>
-              : <span title={chuaCo}>Xem chi tiết →</span>}</td>
+              : <button type="button" onClick={() => setXem(p.MaPhieuNhap)}>Xem chi tiết →</button>}</td>
           </tr>)}
           {!loading && kq.data.length === 0 && <tr><td colSpan={8} className="pn-empty">
             {q || trangThai || khoang ? "Không có phiếu nhập phù hợp với bộ lọc." : "Chưa có phiếu nhập nào."}</td></tr>}
@@ -130,6 +132,7 @@ export default function DanhSachPhieuNhap({ user, mode }) {
 
     <p className="pn-info"><Info size={14}/> Phiếu nháp chưa làm thay đổi số lượng tồn kho. Tồn kho chỉ được cập nhật khi phiếu được xác nhận thành công.</p>
     <p className="pn-warn"><AlertTriangle size={14}/> Phiếu đã ghi nhận chỉ được xem. Không sửa hoặc xóa chứng từ để tránh làm sai lịch sử tồn kho và giá vốn.</p>
+    {xem && <ChiTietPhieuNhapModal maPhieuNhap={xem} onClose={() => setXem(null)}/>}
     <p className="pn-foot">MỘC AN INTERIOR{capNhat && ` • Cập nhật lúc ${capNhat}`}</p>
   </Khung>;
 }

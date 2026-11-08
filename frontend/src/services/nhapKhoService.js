@@ -37,3 +37,8 @@ export async function saveReceipt(maPhieuNhap, body) {
   });
   return parse(res); // { data: { MaPhieuNhap, MaPhieu, TrangThai } }
 }
+
+export async function getReceiptDetail(maPhieuNhap) {
+  const res = await fetch(`${API_URL}/api/nhap-kho/phieu-nhap/${encodeURIComponent(maPhieuNhap)}/chi-tiet`, { credentials: "include" });
+  return (await parse(res)).data; // { phieu, dong, tongTien, tongSoLuong, maGiaoDich, soGiaoDich, gioGhiNhan }
+}
