@@ -44,3 +44,25 @@ export function updateOrderStatus(id, status) {
     body: JSON.stringify({ trangThai: status })
   });
 }
+
+export function getEmployeeOrders(filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => { if (value !== undefined && value !== null && value !== "") params.set(key, String(value)); });
+  return request(`/nhan-vien/danh-sach?${params}`);
+}
+export function getEmployeeOrder(id) { return request(`/nhan-vien/${encodeURIComponent(id)}/chi-tiet`); }
+export function checkEmployeeOrderStock(id) { return request(`/nhan-vien/${encodeURIComponent(id)}/kiem-tra-ton`); }
+
+export function getEmployeeDeliveries(filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key,value])=>{ if (value !== undefined && value !== null && value !== "") params.set(key,String(value)); });
+  return request(`/nhan-vien/giao-hang?${params}`);
+}
+export function getEmployeeDelivery(id) { return request(`/nhan-vien/giao-hang/${encodeURIComponent(id)}`); }
+export function startEmployeeDelivery(id) { return request(`/nhan-vien/giao-hang/${encodeURIComponent(id)}/bat-dau`,{method:"POST"}); }
+export function succeedEmployeeDelivery(id) { return request(`/nhan-vien/giao-hang/${encodeURIComponent(id)}/thanh-cong`,{method:"POST"}); }
+export function failEmployeeDelivery(id, reason) { return request(`/nhan-vien/giao-hang/${encodeURIComponent(id)}/that-bai`,{method:"POST",body:JSON.stringify({lyDo:reason})}); }
+
+export function getManagerStaff(){return request('/quan-ly/nhan-vien');}
+export function getManagerOrderStats(){return request('/quan-ly/thong-ke');}
+export function assignManagerOrder(id,maNhanVien){return request(`/quan-ly/${encodeURIComponent(id)}/phan-cong`,{method:'PATCH',body:JSON.stringify({maNhanVien})});}
