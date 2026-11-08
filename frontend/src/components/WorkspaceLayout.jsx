@@ -18,7 +18,7 @@ const icons = {
 
 const staffNav = [
   { title: "Tổng quan", icon: "overview", path: "" },
-  { title: "Đơn hàng", icon: "orders" },
+  { title: "Đơn hàng", icon: "orders", path: "" },
   { title: "Giao hàng", icon: "delivery" },
   { title: "Tồn kho", icon: "inventory" },
   { title: "Nhập kho", icon: "receipts" },
@@ -64,7 +64,7 @@ function NavItem({ item, active, base, onClose }) {
 
 export default function WorkspaceLayout({ user, mode, activeTitle = "Tổng quan", children }) {
   const navigate = useNavigate();
-  const base = mode === "admin" ? "/admin" : "/quan-ly";
+  const base = mode === "employee" ? "/nhan-vien" : mode === "admin" ? "/admin" : "/quan-ly";
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
   const isStaff = mode === "employee";

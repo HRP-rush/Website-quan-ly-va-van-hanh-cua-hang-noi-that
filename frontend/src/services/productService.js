@@ -1,26 +1,84 @@
-const API_URL=(import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/,'');
-const img=(path)=>{
- if(!path)return '/images/placeholder-product.jpg';
- if(/^https?:\/\//i.test(path))return path;
- if(path.startsWith('/images/'))return path;
- return `${API_URL}/${String(path).replace(/^\/+/, '')}`;
-};
-const normalize=(p)=>({
- id:p.MaSanPham,name:p.TenSanPham,description:p.MoTa,shortDescription:p.MoTaNgan,
- category:p.TenDanhMuc,categoryId:p.MaDanhMuc,style:p.PhongCach,
- material:p.ChatLieuChinh,care:p.HuongDanBaoQuan,specs:p.ThongSoKyThuat,
- status:p.TrangThai,image:img(p.DuongDanAnh),price:p.GiaBan==null?null:Number(p.GiaBan),
- basePrice:p.GiaCoBan==null?null:Number(p.GiaCoBan),
- stock:p.SoLuongTon==null?null:Number(p.SoLuongTon),
- images:(p.Anh||[]).map(x=>({...x,url:img(x.DuongDan)})),
- variants:(p.BienThe||[]).map(x=>({...x,GiaBan:Number(x.GiaBan),SoLuongTon:Number(x.SoLuongTon||0)}))
-});
-async function request(url){
- const response=await fetch(`${API_URL}${url}`,{credentials:'include'});
- let result;try{result=await response.json();}catch{throw new Error('Máy chủ không trả về JSON hợp lệ.');}
- if(!response.ok||!result.success)throw new Error(result.message||'Không thể tải dữ liệu.');
- return result.data;
+const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
+
+function imageUrl(path) {
+  if (!path) return "/images/placeholder-product.jpg";
+  if (/^https?:\/\//i.test(path) || path.startsWith("/images/")) return path;
+  return `${API_URL}/${String(path).replace(/^\/+/, "")}`;
 }
-export async function getProducts(){return (await request('/api/san-pham')).map(normalize);}
-export async function getProductDetail(id){return normalize(await request(`/api/san-pham/cong-khai/${encodeURIComponent(id)}`));}
-export const formatPrice=p=>p==null?'Liên hệ để biết giá':new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(p);
+
+function normalizeVariant(variant) {
+  return {
+    ...variant,
+    GiaBan: variant.GiaBan == null ? null : Number(variant.GiaBan),
+    SoLuongTon: variant.SoLuongTon == null ? null : Number(variant.SoLuongTon)
+  };
+}
+
+function normalize(product) {
+  const variants = (product.BienThe || []).map(normalizeVariant);
+  const primaryVariant = variants[0];
+
+  return {
+    id: product.MaSanPham,
+    variantId: product.MaBienThe || primaryVariant?.MaBienThe || "",
+    sku: product.SKU || primaryVariant?.SKU || "",
+    name: product.TenSanPham,
+    description: product.MoTa || "",
+    shortDescription: product.MoTaNgan || "",
+    category: product.TenDanhMuc || "",
+    categoryId: product.MaDanhMuc,
+    style: product.PhongCach || "",
+    material: product.ChatLieuChinh || "",
+    care: product.HuongDanBaoQuan || "",
+    specs: product.ThongSoKyThuat || "",
+    status: product.TrangThai || "",
+    image: imageUrl(product.DuongDanAnh),
+    price: product.GiaBan == null ? null : Number(product.GiaBan),
+    basePrice: product.GiaCoBan == null ? null : Number(product.GiaCoBan),
+    stock: product.SoLuongTon == null ? null : Number(product.SoLuongTon),
+    images: (product.Anh || []).map((image) => ({ ...image, url: imageUrl(image.DuongDan) })),
+    variants
+  };
+}
+
+async function request(path) {
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}`, { credentials: "include" });
+  } catch {
+    throw new Error(`Không thể kết nối máy chủ sản phẩm tại ${API_URL}.`);
+  }
+
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error(`API sản phẩm không trả JSON hợp lệ (HTTP ${response.status}).`);
+  }
+
+  if (!response.ok || !result?.success) {
+    throw new Error(result?.message || "Không thể tải dữ liệu sản phẩm.");
+  }
+  if (!Array.isArray(result.data) && !result.data) {
+    throw new Error("API sản phẩm trả dữ liệu không đúng định dạng.");
+  }
+  return result.data;
+}
+
+export async function getProducts() {
+  const products = await request("/api/san-pham");
+  if (!Array.isArray(products)) throw new Error("API sản phẩm không trả danh sách hợp lệ.");
+  return products.map(normalize);
+}
+
+export async function getProductDetail(id) {
+  return normalize(await request(`/api/san-pham/cong-khai/${encodeURIComponent(id)}`));
+}
+
+export const formatPrice = (price) => price == null
+  ? "Liên hệ để biết giá"
+  : new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0
+    }).format(Number(price) || 0);

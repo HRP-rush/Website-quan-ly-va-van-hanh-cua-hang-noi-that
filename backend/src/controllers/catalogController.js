@@ -24,6 +24,20 @@ const base = `
       WHERE ct.MaBienThe=b.MaBienThe AND dh.TrangThai IN (${heldStates})) hold
     WHERE b.MaSanPham = sp.MaSanPham
   ) tong
+  OUTER APPLY (
+    SELECT TOP (1) b.MaBienThe, b.SKU
+    FROM dbo.BienTheSanPham b
+    LEFT JOIN dbo.TonKho t ON t.MaBienThe = b.MaBienThe
+    OUTER APPLY (
+      SELECT SUM(ct.SoLuong) AS DaGiu
+      FROM dbo.CTDonHang ct
+      INNER JOIN dbo.DonHang dh ON dh.MaDon = ct.MaDon
+      WHERE ct.MaBienThe = b.MaBienThe AND dh.TrangThai IN (${heldStates})
+    ) holdStock
+    WHERE b.MaSanPham = sp.MaSanPham AND b.TrangThai = N'Đang bán'
+    ORDER BY CASE WHEN ISNULL(t.SoLuongTon, 0) > ISNULL(holdStock.DaGiu, 0) THEN 0 ELSE 1 END,
+             b.MaBienThe
+  ) variant
   WHERE sp.TrangThai = N'Đang bán'`;
 async function danhSach(req,res){
  try {
@@ -32,7 +46,7 @@ async function danhSach(req,res){
    SELECT sp.MaSanPham,sp.TenSanPham,sp.MoTaNgan,sp.MoTa,sp.PhongCach,
    sp.ChatLieuChinh,sp.TrangThai,dm.TenDanhMuc,sp.MaDanhMuc,
    COALESCE(sp.GiaCoBan,tong.GiaMin) AS GiaBan,tong.Ton AS SoLuongTon,
-   anh.DuongDan AS DuongDanAnh
+   anh.DuongDan AS DuongDanAnh,variant.MaBienThe,variant.SKU
    ${base} ORDER BY sp.NgayTao DESC,sp.MaSanPham ASC`);
   res.json({success:true,data:rs.recordset,total:rs.recordset.length});
  }catch(e){console.error('Catalog list:',e.message);res.status(500).json({success:false,message:'Không tải được sản phẩm công khai. Kiểm tra cấu trúc bảng và kết nối SQL Server.'});}

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, ShoppingBag, ArrowLeft, Check } from 'lucide-react';
 import Header from '../../components/Header';import Footer from '../../components/Footer';
 import {getProductDetail,formatPrice} from '../../services/productService';
+import {addProductToCart} from '../../services/cartService';
 import {getCurrentUser} from '../../services/authService';
 import '../../styles/catalog.css';
 export default function ProductDetail(){
@@ -14,10 +15,13 @@ export default function ProductDetail(){
  .catch(e=>active&&setError(e.message)).finally(()=>active&&setLoading(false));return()=>{active=false};},[maSanPham]);
  const gallery=product?.images.length?product.images.map(i=>i.url):[product?.image||'/images/placeholder-product.jpg'];
  const variant=product?.variants.find(v=>String(v.MaBienThe)===variantId);
- async function add(){setNotice('');try{const user=await getCurrentUser();if(!user){navigate('/dang-nhap',{state:{from:location.pathname,message:'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.'}});return;}
+ async function add(){setNotice('');try{
+ if(!variant?.MaBienThe){setNotice('Sản phẩm chưa có biến thể bán hàng.');return;}
+ const user=await getCurrentUser();if(!user){navigate('/dang-nhap',{state:{from:location.pathname+location.search,message:'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.'}});return;}
  if(user.TenVaiTro!=='Khách hàng'){setNotice('Hãy dùng tài khoản Khách hàng để sử dụng giỏ hàng.');return;}
- setNotice('Bạn đã đăng nhập. Chức năng lưu giỏ hàng sẽ được phát triển ở giai đoạn tiếp theo; sản phẩm chưa được thêm vào giỏ.');
- }catch(e){setNotice(`Không kiểm tra được tài khoản: ${e.message}`);}}
+ await addProductToCart({...product,variantId:variant.MaBienThe,stock:variant.SoLuongTon});
+ setNotice('Đã thêm sản phẩm vào giỏ hàng.');
+ }catch(e){setNotice(e.message||'Không thể thêm sản phẩm vào giỏ hàng.');}}
  return <><Header/><main className="moc-detail-page"><div className="container">
  <div className="moc-breadcrumb"><Link to="/">Trang chủ</Link><ChevronRight size={14}/><Link to="/san-pham">Sản phẩm</Link><ChevronRight size={14}/><span>{product?.name||'Chi tiết sản phẩm'}</span></div>
  {loading&&<p className="moc-status">Đang tải chi tiết từ SQL Server...</p>}
@@ -32,9 +36,9 @@ export default function ProductDetail(){
  <p className="moc-detail-desc">{product.shortDescription||product.description||'Chưa cập nhật mô tả sản phẩm.'}</p>
  <div className="moc-availability"><Check size={17}/>{product.variants.length?`Tồn của biến thể: ${variant?.SoLuongTon??0}`:product.stock==null?'Tồn kho chưa cập nhật':`Tồn kho hiện tại: ${product.stock}`}</div>
  {!!product.variants.length&&<div className="moc-variant-group"><label htmlFor="moc-variant">Chọn phiên bản (SKU)</label><select id="moc-variant" value={variantId} onChange={e=>setVariantId(e.target.value)}>{product.variants.map(v=><option key={v.MaBienThe} value={v.MaBienThe}>{[v.SKU,v.MauSac,v.ChatLieu,v.KichThuoc].filter(Boolean).join(' · ')} — {formatPrice(v.GiaBan)}</option>)}</select></div>}
- <button type="button" onClick={add} className="moc-detail-add"><ShoppingBag size={19}/> Thêm vào giỏ hàng</button>
- {notice&&<p className="moc-status" role="status">{notice}</p>}
- <p className="moc-detail-note">Giá, hình ảnh, biến thể và thông tin hiển thị được đọc từ cơ sở dữ liệu. Chưa triển khai quy trình đặt mua.</p>
+  <button type="button" onClick={add} className="moc-detail-add" disabled={!variant||Number(variant.SoLuongTon)<1}><ShoppingBag size={19}/> Thêm vào giỏ hàng</button>
+  {notice&&<p className="moc-status" role="status">{notice}{notice.startsWith('Đã thêm')&&<> <Link to="/gio-hang">Xem giỏ hàng</Link></>}</p>}
+  <p className="moc-detail-note">Biến thể và tồn kho được kiểm tra khi thêm vào giỏ; tồn kho sẽ được kiểm tra lại khi đặt hàng.</p>
  <Link className="moc-back" to="/san-pham"><ArrowLeft size={16}/> Xem sản phẩm khác</Link>
  </div></div>
  <section className="moc-details-panel"><h2>Thông tin sản phẩm</h2><div className="moc-spec-table">
