@@ -16,6 +16,7 @@ const { rateLimit } = require("express-rate-limit");
 const taiKhoanRoutes = require("./routes/taiKhoanRoutes");
 
 const khoRoutes = require("./routes/khoRoutes");
+const nhapKhoRoutes = require("./routes/nhapKhoRoutes");
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:5173",
@@ -105,3 +106,4 @@ app.use(
 );
 
 app.use("/api/kho", khoRoutes);
+app.use("/api/nhap-kho", nhapKhoRoutes);
