@@ -46,7 +46,7 @@ const managementNav = [
     { title: "Phản hồi", icon: "reviews" }
   ] },
   { group: "QUẢN TRỊ", items: [
-    { title: "Thống kê & báo cáo", icon: "reports" },
+    { title: "Thống kê & báo cáo", icon: "reports", path: "/thong-ke-bao-cao" },
     { title: "Cài đặt tài khoản", icon: "settings" }
   ] }
 ];

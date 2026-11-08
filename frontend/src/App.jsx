@@ -1,3 +1,4 @@
+import ThongKeBaoCao from "./pages/management/ThongKeBaoCao";
 import QuanLyDonHangQuanLy from "./pages/management/QuanLyDonHangQuanLy";
 import QuanLyGiaoHangNhanVien from "./pages/employee/QuanLyGiaoHangNhanVien";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -71,6 +72,7 @@ export default function App() {
       <Route path="/quan-ly/don-hang/:id" element={<RoleGate allow={["Quản lý"]}>{(user) => <ChiTietDonHangNhanVien user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/quan-ly/don-hang/:id/cap-nhat" element={<RoleGate allow={["Quản lý"]}>{(user) => <CapNhatTrangThaiDonNhanVien user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/quan-ly/giao-hang" element={<RoleGate allow={["Quản lý"]}>{(user) => <QuanLyGiaoHangNhanVien user={user} mode="manager"/>}</RoleGate>}/>
+      <Route path="/quan-ly/thong-ke-bao-cao" element={<RoleGate allow={["Quản lý"]}>{(user) => <ThongKeBaoCao user={user}/>}</RoleGate>}/>
       <Route path="/quan-ly" element={<RoleGate allow={["Quản lý"]}>
         {(user) => <ManagementDashboard user={user} mode="manager"/>}</RoleGate>}/>
       <Route path="/admin" element={<RoleGate allow={["Admin"]}>
