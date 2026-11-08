@@ -41,13 +41,12 @@ const managementNav = [
     { title: "Giao hàng", icon: "delivery" }
   ] },
   { group: "CON NGƯỜI", items: [
-    { title: "Khách hàng", icon: "customers" },
-    { title: "Nhân viên", icon: "employees" },
-    { title: "Phản hồi", icon: "reviews" }
+    { title: "Khách hàng", icon: "customers", path: "/khach-hang" },
+    { title: "Nhân viên", icon: "employees", path: "/nhan-vien" },
+    { title: "Phản hồi", icon: "reviews", path: "/phan-hoi" }
   ] },
   { group: "QUẢN TRỊ", items: [
-    { title: "Thống kê & báo cáo", icon: "reports" },
-    { title: "Cài đặt tài khoản", icon: "settings" }
+    { title: "Thống kê & báo cáo", icon: "reports" }
   ] }
 ];
 
@@ -92,8 +91,16 @@ export default function WorkspaceLayout({ user, mode, activeTitle = "Tổng quan
                 />
                 )}
             </div>)}
-        <button className="workspace-nav-item" disabled title="Hồ sơ được triển khai trong giai đoạn kế tiếp">
-          <UserRound size={17}/> <span>Tài khoản của tôi</span>
+        <button
+          type="button"
+          className={`workspace-nav-item ${
+            activeTitle === "Tài khoản của tôi" ? "is-active" : ""
+          }`}
+          disabled={isStaff}
+          onClick={() => navigate(`${base}/tai-khoan`)}
+        >
+          <UserRound size={17} />
+          <span>Tài khoản của tôi</span>
         </button>
         <button className="workspace-nav-item" type="button" onClick={handleLogout}>
           <LogOut size={17}/><span>Đăng xuất</span>
