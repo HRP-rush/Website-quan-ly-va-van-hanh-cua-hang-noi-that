@@ -246,4 +246,97 @@ async function layDanhMucTraCuu(req, res) {
   }
 }
 
-module.exports = { layTonKho, layChiTietTonKho, traCuuTonKhoNhanVien, layDanhMucTraCuu };
+
+// Lịch sử giao dịch kho đã ghi nhận: nhân viên chỉ có quyền xem.
+const LOAI_KHO = ["Nhập kho", "Xuất kho", "Hoàn tồn"];
+const maDonKho = `'MA-' + FORMAT(dh.NgayDat, 'yyyyMMdd') + '-' + RIGHT('000' + CAST(dh.MaDon AS VARCHAR(10)), 3)`;
+const maPhieuKho = `'PN-' + RIGHT('0000' + CAST(pn.MaPhieuNhap AS VARCHAR(10)), 4)`;
+const fromGiaoDich = `
+ FROM dbo.GiaoDichKho g
+ INNER JOIN dbo.BienTheSanPham b ON b.MaBienThe = g.MaBienThe
+ INNER JOIN dbo.SanPham sp ON sp.MaSanPham = b.MaSanPham
+ LEFT JOIN dbo.NguoiDung nd ON nd.MaNguoiDung = g.MaNguoiDung
+ LEFT JOIN dbo.CTDonHang ct ON ct.MaCTDon = g.MaCTDon
+ LEFT JOIN dbo.DonHang dh ON dh.MaDon = ct.MaDon
+ LEFT JOIN dbo.CTPhieuNhap ctn ON ctn.MaCTNhap = g.MaCTNhap
+ LEFT JOIN dbo.PhieuNhap pn ON pn.MaPhieuNhap = ctn.MaPhieuNhap
+ LEFT JOIN dbo.NhaCungCap ncc ON ncc.MaNCC = pn.MaNCC`;
+function thamChieuKho() {
+ return `CASE WHEN dh.MaDon IS NOT NULL THEN ${maDonKho}
+              WHEN pn.MaPhieuNhap IS NOT NULL THEN ${maPhieuKho}
+              ELSE NULL END`;
+}
+function batDauNgay(s) {
+ if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+ const d = new Date(s + 'T00:00:00Z');
+ return Number.isNaN(d.getTime()) || d.toISOString().slice(0,10) !== s ? null : s;
+}
+function taoLocGiaoDich(req) {
+ const q = String(req.query.sku || '').trim().slice(0,100);
+ const loai = String(req.query.loai || '').trim();
+ const thamChieu = String(req.query.thamChieu || '').trim().slice(0,80);
+ const tuNgay = String(req.query.tuNgay || '').trim();
+ const denNgay = String(req.query.denNgay || '').trim();
+ if (loai && !LOAI_KHO.includes(loai)) throw new Error('INVALID_TYPE');
+ if ((tuNgay && !batDauNgay(tuNgay)) || (denNgay && !batDauNgay(denNgay)) ||
+   (tuNgay && denNgay && tuNgay > denNgay)) throw new Error('INVALID_DATE');
+ const where = ['1=1'];
+ if (q) where.push("(b.SKU LIKE @sku ESCAPE '\\' OR sp.TenSanPham LIKE @sku ESCAPE '\\')");
+ if (loai) where.push('g.LoaiGiaoDich = @loai');
+ if (tuNgay) where.push('g.NgayGiaoDich >= @tuNgay');
+ if (denNgay) where.push('g.NgayGiaoDich < DATEADD(DAY, 1, @denNgay)');
+ if (thamChieu) where.push(`(${thamChieuKho()}) LIKE @thamChieu ESCAPE '\\'`);
+ const escapeLike = (v) => `%${v.replace(/[\\%_\[]/g, '\\$&')}%`;
+ return { where: where.join(' AND '), add: (request) => {
+  if(q) request.input('sku',sql.NVarChar(210),escapeLike(q));
+  if(loai) request.input('loai',sql.NVarChar(40),loai);
+  if(tuNgay) request.input('tuNgay',sql.Date,tuNgay);
+  if(denNgay) request.input('denNgay',sql.Date,denNgay);
+  if(thamChieu) request.input('thamChieu',sql.NVarChar(170),escapeLike(thamChieu));
+  return request;
+ }};
+}
+async function lichSuKhoNhanVien(req,res) {
+ try {
+  const {where,add} = taoLocGiaoDich(req);
+  const trang = Math.max(1,Number.parseInt(req.query.trang,10)||1);
+  const soDong = Math.min(50,Math.max(1,Number.parseInt(req.query.soDong,10)||10));
+  if (trang>100000) return res.status(400).json({success:false,message:'Trang không hợp lệ.'});
+  const pool=await getPool();
+  const [ds,dem]=await Promise.all([
+   add(pool.request()).input('offset',sql.Int,(trang-1)*soDong).input('soDong',sql.Int,soDong).query(`
+    SELECT g.MaGiaoDich, g.LoaiGiaoDich, g.SoLuongThayDoi, g.GhiChu,
+           CONVERT(VARCHAR(19),g.NgayGiaoDich,126) AS ThoiGian,
+           b.SKU, sp.TenSanPham, COALESCE(nd.HoTen,N'Hệ thống') AS NguoiThucHien,
+           ${thamChieuKho()} AS ThamChieu
+    ${fromGiaoDich} WHERE ${where}
+    ORDER BY g.NgayGiaoDich DESC,g.MaGiaoDich DESC
+    OFFSET @offset ROWS FETCH NEXT @soDong ROWS ONLY`),
+   add(pool.request()).query(`SELECT COUNT(*) AS Tong ${fromGiaoDich} WHERE ${where}`)
+  ]);
+  return res.json({success:true,data:ds.recordset,total:dem.recordset[0].Tong,trang,soDong});
+ } catch(e) {
+  if(e.message==='INVALID_DATE'||e.message==='INVALID_TYPE') return res.status(400).json({success:false,message:'Bộ lọc lịch sử không hợp lệ.'});
+  console.error('Lỗi lấy lịch sử kho:',e.message);
+  return res.status(500).json({success:false,message:'Không thể lấy lịch sử kho.'});
+ }
+}
+async function chiTietGiaoDichKhoNhanVien(req,res) {
+ const id=Number(req.params.maGiaoDich);
+ if(!Number.isSafeInteger(id)||id<=0) return res.status(400).json({success:false,message:'Mã giao dịch không hợp lệ.'});
+ try {
+  const pool=await getPool();
+  const r=await pool.request().input('id',sql.Int,id).query(`
+   SELECT g.MaGiaoDich,g.LoaiGiaoDich,g.SoLuongThayDoi,g.GhiChu,
+      CONVERT(VARCHAR(19),g.NgayGiaoDich,126) AS ThoiGian,
+      b.SKU,sp.TenSanPham,sp.MaSanPham,COALESCE(nd.HoTen,N'Hệ thống') AS NguoiThucHien,
+      ncc.TenNCC, ${thamChieuKho()} AS ThamChieu,
+      (SELECT TOP (1) a.DuongDan FROM dbo.AnhSanPham a
+       WHERE a.MaSanPham=sp.MaSanPham ORDER BY a.LaAnhDaiDien DESC,a.MaAnh ASC) AS DuongDanAnh
+   ${fromGiaoDich} WHERE g.MaGiaoDich=@id`);
+  if(!r.recordset.length) return res.status(404).json({success:false,message:'Không tìm thấy giao dịch.'});
+  return res.json({success:true,data:r.recordset[0]});
+ }catch(e){console.error('Lỗi chi tiết giao dịch kho:',e.message);return res.status(500).json({success:false,message:'Không thể lấy chi tiết giao dịch.'});}
+}
+
+module.exports = { lichSuKhoNhanVien, chiTietGiaoDichKhoNhanVien, layTonKho, layChiTietTonKho, traCuuTonKhoNhanVien, layDanhMucTraCuu };

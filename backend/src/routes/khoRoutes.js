@@ -1,5 +1,5 @@
 const express = require("express");
-const { layTonKho, layChiTietTonKho, traCuuTonKhoNhanVien, layDanhMucTraCuu } = require("../controllers/khoController");
+const { layTonKho, layChiTietTonKho, traCuuTonKhoNhanVien, layDanhMucTraCuu, lichSuKhoNhanVien, chiTietGiaoDichKhoNhanVien } = require("../controllers/khoController");
 const {
   layDanhSachNhaCungCap,
   layChiTietNhaCungCap,
@@ -13,6 +13,8 @@ const quanTri = [xacThuc, choPhepVaiTro("Quản lý", "Admin")];
 
 // API tra cứu CHỈ ĐỌC cho nhân viên; không mở quyền quản trị kho.
 const nhanVien = [xacThuc, choPhepVaiTro("Nhân viên")];
+router.get("/lich-su-kho", ...nhanVien, lichSuKhoNhanVien);
+router.get("/lich-su-kho/:maGiaoDich", ...nhanVien, chiTietGiaoDichKhoNhanVien);
 router.get("/tra-cuu-ton-kho", ...nhanVien, traCuuTonKhoNhanVien);
 router.get("/tra-cuu-danh-muc", ...nhanVien, layDanhMucTraCuu);
 router.get("/ton-kho", ...quanTri, layTonKho);

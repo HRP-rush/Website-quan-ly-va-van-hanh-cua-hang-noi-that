@@ -4,6 +4,7 @@ import Login from "./pages/customer/Login";
 import Register from "./pages/customer/Register";
 import RoleGate from "./components/RoleGate";
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
+import LichSuKhoNhanVien from "./pages/employee/LichSuKhoNhanVien";
 import TraCuuTonKho from "./pages/employee/TraCuuTonKho";
 import ManagementDashboard from "./pages/management/ManagementDashboard";
 import ThemSanPham from "./pages/management/ThemSanPham";
@@ -51,6 +52,8 @@ export default function App() {
         {(user) => <EmployeeDashboard user={user}/>}</RoleGate>}/>
       <Route path="/nhan-vien/ton-kho" element={<RoleGate allow={["Nhân viên"]}>
         {(user) => <TraCuuTonKho user={user}/>}</RoleGate>}/>
+      <Route path="/nhan-vien/lich-su-kho" element={<RoleGate allow={["Nhân viên"]}>
+        {(user) => <LichSuKhoNhanVien user={user}/>}</RoleGate>}/>
       <Route path="/nhan-vien/nhap-kho" element={<RoleGate allow={["Nhân viên"]}>
         {(user) => <TaoPhieuNhapNhanVien user={user}/>}</RoleGate>}/>
       <Route path="/nhan-vien/nhap-kho/:maPhieuNhap" element={<RoleGate allow={["Nhân viên"]}>
