@@ -102,10 +102,14 @@ export default function WorkspaceLayout({ user, mode, activeTitle = "Tổng quan
         <button
           type="button"
           className={`workspace-nav-item ${
-            activeTitle === "Tài khoản của tôi" ? "is-active" : ""
+            activeTitle === "Tài khoản của tôi"
+              ? "is-active"
+              : ""
           }`}
-          disabled={isStaff}
-          onClick={() => navigate(`${base}/tai-khoan`)}
+          onClick={() => {
+            setSidebarOpen(false);
+            navigate(`${base}/tai-khoan`);
+          }}
         >
           <UserRound size={17} />
           <span>Tài khoản của tôi</span>
