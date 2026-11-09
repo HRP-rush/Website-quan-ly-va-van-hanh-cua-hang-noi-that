@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Layers3, Sofa, Boxes, Warehouse, ClipboardList,
   Truck, UsersRound, UserRound, MessageSquare, BarChart3, Settings,
@@ -76,7 +76,15 @@ export default function WorkspaceLayout({ user, mode, activeTitle = "Tổng quan
       {sidebarOpen ? <X size={22}/> : <Menu size={22}/>}
     </button>
     <aside className={`workspace-sidebar ${sidebarOpen ? "is-open" : ""}`}>
-      <div className="workspace-brand"><span>MỘC AN</span><small>INTERIOR</small></div>
+      <Link
+        to="/"
+        className="workspace-brand"
+        aria-label="Mộc An — Về trang chủ"
+        onClick={() => setSidebarOpen(false)}
+      >
+        <span>MỘC AN</span>
+        <small>INTERIOR</small>
+      </Link>
       <div className="workspace-side-caption">{isStaff ? "CỔNG NHÂN VIÊN" : "CỔNG QUẢN TRỊ"}</div>
       <nav aria-label="Điều hướng khu vực làm việc">
         {isStaff ? staffNav.map(item => <NavItem item={item} key={item.title} active={item.title === activeTitle} base={base} onClose={() => setSidebarOpen(false)}/>)
