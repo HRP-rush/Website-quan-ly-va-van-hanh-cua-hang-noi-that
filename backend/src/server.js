@@ -25,6 +25,7 @@ const { rateLimit } = require("express-rate-limit");
 const taiKhoanRoutes = require("./routes/taiKhoanRoutes");
 
 const khoRoutes = require("./routes/khoRoutes");
+const nhapKhoRoutes = require("./routes/nhapKhoRoutes");
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:5173",
@@ -82,7 +83,10 @@ app.get("/api/health/db", async (req, res) => {
   }
 });
 
+app.use("/api/danh-muc", require("./routes/danhMucRoutes"));
 app.use("/api/san-pham", sanPhamRoutes);
+app.use("/api/con-nguoi", require("./routes/conNguoiRoutes"));
+app.use("/api/phan-hoi", require("./routes/phanHoiRoutes"));
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -127,6 +131,8 @@ app.use(
 app.use("/api/kho", khoRoutes);
 app.use("/api/v1/gio-hang", gioHangRoutes);
 app.use("/api/v1/don-hang", donHangRoutes);
+app.use("/api/nhap-kho", nhapKhoRoutes);
+app.use("/api/bao-cao", require("./routes/baoCaoRoutes"));
 
 // Keep unknown API routes in JSON format so clients never try to parse an HTML 404 page.
 app.use("/api", (req, res) => {
@@ -140,3 +146,4 @@ app.listen(PORT, () => {
   console.log(`Backend đang chạy tại http://localhost:${PORT}`);
 >>>>>>> 4ef9bddc18d348b4f669190ee2f1768a68ca3155
 });
+

@@ -18,36 +18,35 @@ const icons = {
 
 const staffNav = [
   { title: "Tổng quan", icon: "overview", path: "" },
-  { title: "Đơn hàng", icon: "orders", path: "" },
-  { title: "Giao hàng", icon: "delivery" },
-  { title: "Tồn kho", icon: "inventory" },
-  { title: "Nhập kho", icon: "receipts" },
-  { title: "Lịch sử kho", icon: "history" }
+  { title: "Đơn hàng", icon: "orders", path: "/don-hang" },
+  { title: "Giao hàng", icon: "delivery", path: "/giao-hang" },
+  { title: "Tồn kho", icon: "inventory", path: "/ton-kho" },
+  { title: "Nhập kho", icon: "receipts", path: "/nhap-kho" },
+  { title: "Lịch sử kho", icon: "history", path: "/lich-su-kho" }
 ];
 const managementNav = [
   { group: "TỔNG QUAN", items: [{ title: "Tổng quan", icon: "overview", path: "" }] },
   { group: "SẢN PHẨM", items: [
-    { title: "Danh mục", icon: "category"},
+    { title: "Danh mục", icon: "category", path: "/danh-muc" },
     { title: "Sản phẩm", icon: "products", path: "/san-pham" },
     { title: "Biến thể sản phẩm", icon: "variants" }
   ] },
   { group: "KHO & CUNG ỨNG", items: [
     { title: "Kho hàng", icon: "inventory", path: "/kho-hang" },
-    { title: "Phiếu nhập", icon: "receipts" },
-    { title: "Nhà cung cấp", icon: "suppliers" }
+    { title: "Phiếu nhập", icon: "receipts", path: "/phieu-nhap" },
+    { title: "Nhà cung cấp", icon: "suppliers", path: "/nha-cung-cap" }
   ] },
   { group: "BÁN HÀNG", items: [
-    { title: "Đơn hàng", icon: "orders" },
-    { title: "Giao hàng", icon: "delivery" }
+    { title: "Đơn hàng", icon: "orders", path: "/don-hang" },
+    { title: "Giao hàng", icon: "delivery", path: "/giao-hang" }
   ] },
   { group: "CON NGƯỜI", items: [
-    { title: "Khách hàng", icon: "customers" },
-    { title: "Nhân viên", icon: "employees" },
-    { title: "Phản hồi", icon: "reviews" }
+    { title: "Khách hàng", icon: "customers", path: "/khach-hang" },
+    { title: "Nhân viên", icon: "employees", path: "/nhan-vien" },
+    { title: "Phản hồi", icon: "reviews", path: "/phan-hoi" }
   ] },
   { group: "QUẢN TRỊ", items: [
-    { title: "Thống kê & báo cáo", icon: "reports" },
-    { title: "Cài đặt tài khoản", icon: "settings" }
+    { title: "Thống kê & báo cáo", icon: "reports", path: "/thong-ke-bao-cao" },
   ] }
 ];
 
@@ -92,8 +91,16 @@ export default function WorkspaceLayout({ user, mode, activeTitle = "Tổng quan
                 />
                 )}
             </div>)}
-        <button className="workspace-nav-item" disabled title="Hồ sơ được triển khai trong giai đoạn kế tiếp">
-          <UserRound size={17}/> <span>Tài khoản của tôi</span>
+        <button
+          type="button"
+          className={`workspace-nav-item ${
+            activeTitle === "Tài khoản của tôi" ? "is-active" : ""
+          }`}
+          disabled={isStaff}
+          onClick={() => navigate(`${base}/tai-khoan`)}
+        >
+          <UserRound size={17} />
+          <span>Tài khoản của tôi</span>
         </button>
         <button className="workspace-nav-item" type="button" onClick={handleLogout}>
           <LogOut size={17}/><span>Đăng xuất</span>

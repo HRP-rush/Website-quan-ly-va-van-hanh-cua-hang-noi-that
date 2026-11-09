@@ -6,6 +6,7 @@ import Footer from "../../components/Footer";
 import { getMyOrders, trackOrder } from "../../services/orderService";
 import formatPrice from "../../utils/formatPrice";
 import "../../styles/orderTracking.css";
+import DanhGiaDonHang from "../../components/DanhGiaDonHang";
 
 const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 const statusSteps = ["Chờ xác nhận", "Đã xác nhận", "Đang chuẩn bị", "Đang giao", "Hoàn tất"];
@@ -122,6 +123,12 @@ export default function TheoDoiDonHang() {
               <div><strong>{item.TenSanPham}</strong><span>{item.CauHinh || item.SKU}</span><small>SKU: {item.SKU}</small><span>{formatPrice(item.GiaBan)} × {item.SoLuong}</span></div>
             </article>)}
           </section>
+          {order.TrangThai === "Hoàn tất" && (
+            <DanhGiaDonHang
+              key={order.MaDon}
+              maDon={order.MaDon}
+            />
+          )}
           <section className="tracking-section"><h2>Thông tin giao hàng</h2><strong>{order.TenNguoiNhan} · {order.SDTNhan}</strong><p>{order.DiaChiGiao}</p></section>
           <section className="tracking-section"><h2>Lịch sử trạng thái</h2>
             {order.lichSu.length ? <ol className="tracking-history">{[...order.lichSu].reverse().map((entry, index) => <li key={`${entry.ThoiDiem}-${index}`}><strong>{formatDate(entry.ThoiDiem)} — {entry.TrangThaiMoi}</strong><span>{entry.TrangThaiCu ? `Trạng thái trước đó: ${entry.TrangThaiCu}` : "Đơn hàng đã được tiếp nhận và đang chờ xác nhận."}</span></li>)}</ol> : <p>Chưa có cập nhật trạng thái.</p>}
