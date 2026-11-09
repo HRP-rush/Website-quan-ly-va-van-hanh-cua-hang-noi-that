@@ -108,6 +108,7 @@ app.use("/api/v1/gio-hang", gioHangRoutes);
 app.use("/api/v1/don-hang", donHangRoutes);
 app.use("/api/nhap-kho", nhapKhoRoutes);
 app.use("/api/bao-cao", require("./routes/baoCaoRoutes"));
+app.use("/api/tong-quan", require("./routes/tongQuanRoutes"));
 
 // Keep unknown API routes in JSON format so clients never try to parse an HTML 404 page.
 app.use("/api", (req, res) => {
