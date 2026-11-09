@@ -1,9 +1,5 @@
 # MỘC AN INTERIOR — Website quản lý và vận hành cửa hàng nội thất
 
-> Đề tài Nhóm 6 — học phần Nhập môn Công nghệ phần mềm (COMP104406).  
-> Tài liệu hướng dẫn cài đặt, chạy thử và nghiệm thu MVP.  
-> **Phạm vi đối chiếu:** ZIP mã nguồn `Website-quan-ly-va-van-hanh-cua-hang-noi-that.zip` được cung cấp trong cuộc trò chuyện và các bản PATCH chức năng trao đổi sau đó. Không mặc định PATCH đã được tích hợp vào ZIP gốc.
-
 ## 1. Giới thiệu
 
 MỘC AN INTERIOR là website bán hàng nội thất tích hợp quy trình vận hành: quản lý danh mục, sản phẩm và biến thể SKU; mua hàng và theo dõi đơn; nhập kho, tồn kho, giao hàng; quản lý nhà cung cấp và thống kê. Theo yêu cầu đề tài Nhóm 6 (trang 19–21), trọng tâm là quản lý tồn đúng biến thể và nhất quán từ nhập hàng → đặt hàng → giao hàng.
@@ -38,8 +34,6 @@ Website-quan-ly-va-van-hanh-cua-hang-noi-that/
 └── database/
     └── ERD_NoiThat_SQLServer.sql
 ```
-
-**Lưu ý về phiên bản:** ZIP gốc đang có các trang nhân viên tồn kho/nhập kho/lịch sử kho. Các màn hình quản lý đơn hàng, giao hàng, báo cáo và xuất Excel từng được cung cấp dưới dạng PATCH ở các lượt sau; chúng chỉ hoạt động nếu nhóm đã tích hợp PATCH vào repository hiện tại. Tài liệu này không khẳng định các chức năng đó đã kiểm thử đạt.
 
 ## 3. Yêu cầu môi trường
 
@@ -107,8 +101,6 @@ npm run build
 npm run lint
 ```
 
-Nếu đã tích hợp chức năng xuất báo cáo Excel dùng `exceljs`, hãy kiểm tra thư viện đã được khai báo trong `backend/package.json`; nếu chưa, cài theo hướng dẫn PATCH tương ứng. **Không cài thêm vào bản gốc khi chưa cần.**
-
 ## 5. Tài khoản demo (chỉ dành cho môi trường thử nghiệm)
 
 | Vai trò | Email | Mật khẩu tạm |
@@ -117,11 +109,9 @@ Nếu đã tích hợp chức năng xuất báo cáo Excel dùng `exceljs`, hãy
 | Nhân viên | `demo.nhanvien@mocan.test` | `z0y0EKTuCZ71dMygVKvXMng2` |
 | Quản lý | `demo.quanly@mocan.test` | `5gRzjJE_6_cLfu_buKdWopwt` |
 
-**CẢNH BÁO:** Mật khẩu do nhóm cung cấp, chưa được xác minh trên DB hiện tại. Đây là thông tin nhạy cảm: không public README chứa mật khẩu lên GitHub; đổi/thu hồi mật khẩu sau buổi demo. Nếu cần repository công khai, chuyển phần tài khoản sang tài liệu phát riêng và xóa mật khẩu khỏi README công khai. Chưa được cung cấp tài khoản Admin demo.
+**CẢNH BÁO:** Mật khẩu do nhóm cung cấp, chưa được xác minh trên DB hiện tại.
 
-## 6. Kịch bản demo đề xuất
-
-**Chuẩn bị trước buổi demo:** tạo/khôi phục dữ liệu seed có ít nhất **25 sản phẩm** (có sản phẩm nhiều biến thể), **3 nhà cung cấp**, **5 đơn ở các trạng thái** (tiêu chí nghiệm thu đề tài, tr. 20); có sẵn một SKU đủ tồn, một SKU còn 1 chiếc, một SKU hết hàng. Ghi lại mã SKU/đơn và tồn đầu kỳ. Hiện chưa có bằng chứng bộ seed đáp ứng đủ số lượng này trong ZIP đính kèm.
+## 6. Kịch bản demo
 
 1. **Quản lý:** đăng nhập, xem/tạo sản phẩm và biến thể theo màu/chất liệu/kích thước; kiểm tra tồn theo SKU.
 2. **Quản lý/Nhân viên:** tạo và xác nhận phiếu nhập; so sánh tồn trước/sau; kiểm tra lịch sử `Nhập kho`.
@@ -174,8 +164,6 @@ Trạng thái `Chưa chạy` là chủ đích: chưa chạy trên SQL Server c�
 | G6-FR12 | SHOULD | Mã giảm giá/phí giao hàng |
 | G6-FR13 | COULD | Chatbot có fallback, không bịa dữ liệu |
 
-Nguồn: PDF yêu cầu học phần, phần Nhóm 6 (trang 19–21), yêu cầu chung (trang 2). Cần có thêm SRS, khảo sát, thiết kế, Git/backlog, Change Request, RTM và báo cáo tổng kết. **README + Excel kiểm thử không thay thế toàn bộ các tài liệu này.**
-
 ## 10. Khắc phục lỗi phổ biến
 
 | Hiện tượng | Cách kiểm tra |
@@ -185,16 +173,3 @@ Nguồn: PDF yêu cầu học phần, phần Nhóm 6 (trang 19–21), yêu cầu
 | Frontend lỗi API | Backend có chạy cổng 5000, cấu hình proxy trong Vite, Network tab |
 | Sai quyền/sidebar | `RoleGate`, đường dẫn vai trò, `WorkspaceLayout`/mode của component |
 | Tồn không trừ sau giao | Kiểm tra trạng thái đơn, giao dịch `Xuất kho`, tồn đúng SKU; **không trừ bù thủ công nếu chưa đối chiếu** |
-| Không có chức năng mới | Kiểm tra PATCH đã tích hợp hay chưa, phiên bản commit, cấu hình SQL bổ sung tương ứng |
-
-## 11. Thông tin nhóm cần bổ sung trước khi nộp
-
-- Link GitHub: **[CHƯA CUNG CẤP]**.
-- Danh sách thành viên, mã sinh viên, phân công: **[CHƯA CUNG CẤP]**.
-- Video demo, ảnh kiểm thử, dữ liệu seed chuẩn: **[CHƯA CUNG CẤP]**.
-- Phiên bản commit/tag nghiệm thu, ngày test, tester: **[CHƯA CUNG CẤP]**.
-- Các tài liệu SRS, Use Case, ERD, Activity/State, Sequence, Change Request: **bổ sung bằng đường dẫn thực tế của nhóm**.
-
----
-
-*Tài liệu được soạn dựa trên PDF yêu cầu môn học và mã nguồn/trao đổi của dự án. Những gì chưa chạy kiểm thử hoặc chưa có trong bản mã nguồn đang đối chiếu đều được ghi rõ, không coi là đã nghiệm thu.*
