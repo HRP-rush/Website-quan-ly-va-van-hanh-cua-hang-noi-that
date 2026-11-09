@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import WorkspaceLayout from '../../components/WorkspaceLayout';
-import { layBaoCao } from '../../services/baoCaoService';
+import { layBaoCao, taiExcelDoanhThu } from '../../services/baoCaoService';
 import '../../styles/thongKeBaoCao.css';
 
 const formatMoney = value => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} đ`;
@@ -43,6 +43,15 @@ function Donut({rows}) {
 }
 function getImage(path){if(!path)return '';if(/^https?:\/\//i.test(path))return path;const base=(import.meta.env.VITE_API_URL||'').replace(/\/$/,'');return `${base}${path.startsWith('/')?'':'/'}${path}`;}
 export default function ThongKeBaoCao({user}) {
+  const [exportOpen,setExportOpen] = useState(false);
+  const [exportPeriod,setExportPeriod] = useState('thang');
+  const [exportDay,setExportDay] = useState(() => shift(0));
+  const [exportWeek,setExportWeek] = useState(() => shift(0));
+  const [exportMonth,setExportMonth] = useState(() => shift(0).slice(0,7));
+  const [exportQuarter,setExportQuarter] = useState(() => String(Math.floor(new Date().getMonth()/3)+1));
+  const [exportYear,setExportYear] = useState(() => String(new Date().getFullYear()));
+  const [exportLoading,setExportLoading] = useState(false);
+  const [exportError,setExportError] = useState('');
   const [preset,setPreset]=useState('7');
   const [from,setFrom]=useState(()=>shift(6)),[to,setTo]=useState(()=>shift(0));
   const [group,setGroup]=useState('ngay');
@@ -51,6 +60,36 @@ export default function ThongKeBaoCao({user}) {
   useEffect(()=>{let active=true;setLoading(true);setError('');layBaoCao(applied).then(data=>{if(active)setReport(data)}).catch(e=>{if(active){setError(e.message);setReport(null)}}).finally(()=>{if(active)setLoading(false)});return()=>{active=false};},[applied]);
   function choosePreset(value){setPreset(value);if(value==='custom')return;const a=shift(value==='today'?0:Number(value)-1),b=shift(0);setFrom(a);setTo(b);setApplied({tuNgay:a,denNgay:b,nhomTheo:group});}
   function apply(e){e.preventDefault();if(!from||!to||from>to){setError('Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc.');return}const days=(new Date(to)-new Date(from))/86400000;if(days>366){setError('Chỉ hỗ trợ phạm vi tối đa 367 ngày.');return;}setError('');setApplied({tuNgay:from,denNgay:to,nhomTheo:group});}
+  function getExportRange() {
+    if (exportPeriod === 'ngay') return [exportDay, exportDay];
+    if (exportPeriod === 'tuan') {
+      const [y,m,d] = exportWeek.split('-').map(Number);
+      const anchor = new Date(y,m-1,d,12);
+      anchor.setDate(anchor.getDate()-((anchor.getDay()+6)%7));
+      const first = iso(anchor); anchor.setDate(anchor.getDate()+6);
+      return [first, iso(anchor)];
+    }
+    if (exportPeriod === 'thang') {
+      const [y,m] = exportMonth.split('-').map(Number);
+      return [`${exportMonth}-01`, iso(new Date(y,m,0,12))];
+    }
+    const year = Number(exportYear);
+    if (exportPeriod === 'quy') {
+      const quarter = Number(exportQuarter);
+      const month = (quarter-1)*3;
+      return [iso(new Date(year,month,1,12)), iso(new Date(year,month+3,0,12))];
+    }
+    return [`${year}-01-01`, `${year}-12-31`];
+  }
+  async function exportExcel() {
+    setExportError('');
+    const [tuNgay,denNgay] = getExportRange();
+    if (!tuNgay || !denNgay) { setExportError('Vui lòng chọn kỳ báo cáo hợp lệ.'); return; }
+    setExportLoading(true);
+    try { await taiExcelDoanhThu({ tuNgay, denNgay, ky: exportPeriod }); setExportOpen(false); }
+    catch (error) { setExportError(error.message); }
+    finally { setExportLoading(false); }
+  }
   const sales=useMemo(()=> report?grouped(report.doanhThuTheoNgay,applied.tuNgay,applied.denNgay,applied.nhomTheo,'Ngay','DoanhThu'):[],[report,applied]);
   const orders=useMemo(()=> report?grouped(report.donTheoNgay,applied.tuNgay,applied.denNgay,applied.nhomTheo,'Ngay','SoDon'):[],[report,applied]);
   const stats=report?.tongQuan||{};
@@ -61,6 +100,15 @@ export default function ThongKeBaoCao({user}) {
     <h1>Thống kê & báo cáo</h1><p className="bcr-sub">Đánh giá doanh thu, đơn hàng và hiệu quả sản phẩm theo khoảng thời gian.</p>
     <div className="bcr-presets">{[['today','Hôm nay'],['7','7 ngày'],['30','30 ngày'],['custom','Tùy chọn']].map(([key,label])=><button key={key} className={preset===key?'active':''} onClick={()=>choosePreset(key)}>{label}</button>)}<span>{dateLabel(applied.tuNgay)} – {dateLabel(applied.denNgay)} • Dữ liệu từ hệ thống</span></div>
     <form onSubmit={apply} className="bcr-form"><label>Từ ngày<input type="date" value={from} onChange={e=>{setFrom(e.target.value);setPreset('custom')}} required/></label><label>Đến ngày<input type="date" value={to} onChange={e=>{setTo(e.target.value);setPreset('custom')}} required/></label><label>Nhóm theo<select value={group} onChange={e=>setGroup(e.target.value)}><option value="ngay">Ngày</option><option value="tuan">Tuần</option><option value="thang">Tháng</option></select></label><button type="submit">Áp dụng</button></form>
+    <div className="bcr-export-bar"><div><strong>Xuất báo cáo doanh thu</strong><span>Tải bảng Excel chi tiết theo ngày, tuần, tháng, quý hoặc năm.</span></div><button type="button" onClick={()=>{setExportError('');setExportOpen(true)}}><span aria-hidden="true">⇩</span> Xuất báo cáo Excel</button></div>
+    {exportOpen && <div className="bcr-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!exportLoading)setExportOpen(false)}}><div className="bcr-export-modal" role="dialog" aria-modal="true" aria-labelledby="bcr-export-title"><div className="bcr-modal-head"><h2 id="bcr-export-title">Xuất báo cáo doanh thu</h2><button type="button" aria-label="Đóng" onClick={()=>setExportOpen(false)} disabled={exportLoading}>×</button></div><p>Chọn kỳ thống kê để xuất báo cáo Excel theo mẫu MỘC AN INTERIOR.</p><label>Xuất theo<select value={exportPeriod} onChange={e=>setExportPeriod(e.target.value)}><option value="ngay">Ngày</option><option value="tuan">Tuần (thứ Hai – Chủ nhật)</option><option value="thang">Tháng</option><option value="quy">Quý</option><option value="nam">Năm</option></select></label>
+    {exportPeriod==='ngay'&&<label>Chọn ngày<input type="date" value={exportDay} onChange={e=>setExportDay(e.target.value)}/></label>}
+    {exportPeriod==='tuan'&&<label>Chọn một ngày trong tuần<input type="date" value={exportWeek} onChange={e=>setExportWeek(e.target.value)}/></label>}
+    {exportPeriod==='thang'&&<label>Chọn tháng<input type="month" value={exportMonth} onChange={e=>setExportMonth(e.target.value)}/></label>}
+    {['quy','nam'].includes(exportPeriod)&&<label>Năm<input type="number" min="2000" max="2100" value={exportYear} onChange={e=>setExportYear(e.target.value)}/></label>}
+    {exportPeriod==='quy'&&<label>Quý<select value={exportQuarter} onChange={e=>setExportQuarter(e.target.value)}>{[1,2,3,4].map(q=><option key={q} value={String(q)}>Quý {q}</option>)}</select></label>}
+    <div className="bcr-export-range">Khoảng thời gian: <strong>{dateLabel(getExportRange()[0])} – {dateLabel(getExportRange()[1])}</strong></div>
+    {exportError&&<p className="bcr-error" role="alert">{exportError}</p>}<div className="bcr-modal-actions"><button type="button" onClick={()=>setExportOpen(false)} disabled={exportLoading}>Hủy</button><button type="button" className="primary" onClick={exportExcel} disabled={exportLoading}>{exportLoading?'Đang tạo Excel...':'Tải file Excel'}</button></div></div></div>}
     {error&&<p className="bcr-error" role="alert">{error}</p>}{loading&&<p className="bcr-status">Đang tải dữ liệu báo cáo...</p>}
     {!loading&&report&&<>
     <div className="bcr-kpis"><section><span>Doanh thu</span><strong>{shortMoney(stats.DoanhThu)}</strong><small>Đơn hoàn tất • Không gồm phí giao</small></section><section><span>Tổng số đơn hàng</span><strong>{Number(stats.TongDon||0).toLocaleString('vi-VN')}</strong><small>{stats.DonHoanTat||0} đơn hoàn tất trong kỳ</small></section><section><span>Sản phẩm đã bán</span><strong>{Number(stats.SoSanPham||0).toLocaleString('vi-VN')}</strong><small>Trong các đơn hoàn tất</small></section><section><span>Sản phẩm sắp hết hàng</span><strong>{String(stats.TongCanhBao||0).padStart(2,'0')} SKU</strong><small>{stats.TongSapHet||0} sắp hết • {stats.TongHet||0} hết hàng</small></section></div>

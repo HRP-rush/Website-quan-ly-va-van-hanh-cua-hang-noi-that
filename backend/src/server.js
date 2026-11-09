@@ -111,6 +111,7 @@ app.use("/api/don-hang", donHangRoutes);
 // Các route khác
 app.use("/api/nhap-kho", nhapKhoRoutes);
 app.use("/api/bao-cao", require("./routes/baoCaoRoutes"));
+app.use("/api/tong-quan", require("./routes/tongQuanRoutes"));
 
 // Xử lý API không tồn tại
 app.use("/api", (req, res) => {

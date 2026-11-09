@@ -57,6 +57,8 @@ export default function App() {
       {/* Route được bảo vệ; Backend cũng phải kiểm tra quyền ở API nghiệp vụ. */}
       <Route path="/nhan-vien" element={<RoleGate allow={["Nhân viên"]}>
         {(user) => <EmployeeDashboard user={user}/>}</RoleGate>}/>
+      <Route path="/nhan-vien/tai-khoan" element={<RoleGate allow={["Nhân viên"]}>
+        {(user) => (<TaiKhoanCuaToi user={user} mode="employee"/>)}</RoleGate>}/>
       <Route path="/nhan-vien/don-hang" element={<RoleGate allow={["Nhân viên"]}>
         {(user) => <QuanLyDonHang user={user}/>}</RoleGate>}/>
       <Route path="/nhan-vien/don-hang/:id" element={<RoleGate allow={["Nhân viên"]}>
