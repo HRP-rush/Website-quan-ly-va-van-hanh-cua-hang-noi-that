@@ -1,65 +1,44 @@
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
-
-<<<<<<< HEAD
-// Khởi tạo ứng dụng Express
-const app = express();
-=======
-require("dotenv").config();
-
-const path = require("path");
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
+const cookieParser = require("cookie-parser");
+const { rateLimit } = require("express-rate-limit");
+require("dotenv").config();
+
 const { getPool } = require("./config/db");
 
+// Import các routes
 const sanPhamRoutes = require("./routes/sanPhamRoutes");
 const gioHangRoutes = require("./routes/gioHangRoutes");
 const donHangRoutes = require("./routes/donHangRoutes");
-
-const app = express();
-const PORT = Number(process.env.PORT || 5000);
-
-const cookieParser = require("cookie-parser");
-const { rateLimit } = require("express-rate-limit");
 const taiKhoanRoutes = require("./routes/taiKhoanRoutes");
-
 const khoRoutes = require("./routes/khoRoutes");
 const nhapKhoRoutes = require("./routes/nhapKhoRoutes");
 
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
-  credentials: true
-}));
->>>>>>> 4ef9bddc18d348b4f669190ee2f1768a68ca3155
+// Khởi tạo ứng dụng Express
+const app = express();
+const PORT = Number(process.env.PORT || 5000);
+
+// Cấu hình CORS
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    credentials: true
+  })
+);
 
 // Cấu hình Middleware
-app.use(cors());
 app.use(express.json());
-<<<<<<< HEAD
-app.use(express.urlencoded({ extended: true }));
-=======
 app.use(cookieParser());
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
->>>>>>> 4ef9bddc18d348b4f669190ee2f1768a68ca3155
-
-// Khai báo các Routes của hệ thống
-const donHangRoutes = require("./routes/donHangRoutes");
-
-// Gắn prefix cho route đơn hàng
-app.use("/api/don-hang", donHangRoutes);
 
 // Route kiểm tra server hoạt động
 app.get("/", (req, res) => {
-  res.json({ message: "API Mộc An Interior đang hoạt động ổn định!" });
+  res.json({
+    message: "API Mộc An Interior đang hoạt động ổn định!"
+  });
 });
 
-<<<<<<< HEAD
-// Cấu hình cổng chạy Server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server đang chạy trên cổng ${PORT}`);
-=======
 // API kiểm tra kết nối SQL Server
 app.get("/api/health/db", async (req, res) => {
   try {
@@ -83,11 +62,13 @@ app.get("/api/health/db", async (req, res) => {
   }
 });
 
+// Khai báo các Routes của hệ thống
 app.use("/api/danh-muc", require("./routes/danhMucRoutes"));
 app.use("/api/san-pham", sanPhamRoutes);
 app.use("/api/con-nguoi", require("./routes/conNguoiRoutes"));
 app.use("/api/phan-hoi", require("./routes/phanHoiRoutes"));
 
+// Giới hạn số lần đăng nhập
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -99,12 +80,9 @@ const loginLimiter = rateLimit({
   }
 });
 
-app.use(
-  "/api/v1/tai-khoan/dang-nhap",
-  loginLimiter
-);
+app.use("/api/v1/tai-khoan/dang-nhap", loginLimiter);
 
-
+// Giới hạn số lần đăng ký
 const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 5,
@@ -117,24 +95,24 @@ const registerLimiter = rateLimit({
   }
 });
 
-app.use(
-  "/api/v1/tai-khoan/dang-ky",
-  registerLimiter
-);
+app.use("/api/v1/tai-khoan/dang-ky", registerLimiter);
 
+// Route tài khoản
+app.use("/api/v1/tai-khoan", taiKhoanRoutes);
 
-app.use(
-  "/api/v1/tai-khoan",
-  taiKhoanRoutes
-);
-
+// Các route kho, giỏ hàng, đơn hàng
 app.use("/api/kho", khoRoutes);
 app.use("/api/v1/gio-hang", gioHangRoutes);
 app.use("/api/v1/don-hang", donHangRoutes);
+
+// Route đơn hàng
+app.use("/api/don-hang", donHangRoutes);
+
+// Các route khác
 app.use("/api/nhap-kho", nhapKhoRoutes);
 app.use("/api/bao-cao", require("./routes/baoCaoRoutes"));
 
-// Keep unknown API routes in JSON format so clients never try to parse an HTML 404 page.
+// Xử lý API không tồn tại
 app.use("/api", (req, res) => {
   res.status(404).json({
     success: false,
@@ -142,8 +120,7 @@ app.use("/api", (req, res) => {
   });
 });
 
+// Khởi chạy server
 app.listen(PORT, () => {
   console.log(`Backend đang chạy tại http://localhost:${PORT}`);
->>>>>>> 4ef9bddc18d348b4f669190ee2f1768a68ca3155
 });
-
